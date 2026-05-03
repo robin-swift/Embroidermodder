@@ -40,6 +40,7 @@
 #include "undo-editor.h"
 #include "undo-commands.h"
 #include "embdetails-dialog.h"
+#include "gui.h"
 
 /* Call a command from the command table using the name of the command. */
 int
@@ -68,7 +69,7 @@ void MainWindow::debug(QString txt)
     qDebug("%s", qPrintable(txt));
 }
 
-void MainWindow::stub_implement(QString txt)
+void stub_implement(QString txt)
 {
     qDebug("TODO: %s", qPrintable(txt));
 }
@@ -285,10 +286,11 @@ void MainWindow::tipOfTheDay()
 
     ImageWidget* imgBanner = new ImageWidget(appDir + "/images/did-you-know.png", wizardTipOfTheDay);
 
-    if (state.settings.general_current_tip >= state.tips->count) {
+    int n_tips = table_length(tips);
+    if (state.settings.general_current_tip >= n_tips) {
         state.settings.general_current_tip = 0;
     }
-    labelTipOfTheDay = new QLabel(state.tips->data[state.settings.general_current_tip], wizardTipOfTheDay);
+    labelTipOfTheDay = new QLabel(tips[state.settings.general_current_tip], wizardTipOfTheDay);
     labelTipOfTheDay->setWordWrap(true);
 
     QCheckBox* checkBoxTipOfTheDay = new QCheckBox(tr("&Show tips on startup"), wizardTipOfTheDay);
@@ -333,21 +335,22 @@ void MainWindow::checkBoxTipOfTheDayStateChanged(int checked)
 void MainWindow::buttonTipOfTheDayClicked(int button)
 {
     qDebug("buttonTipOfTheDayClicked(%d)", button);
+    int n_tips = table_length(tips);
     if (button == QWizard::CustomButton1) {
         if (state.settings.general_current_tip > 0) {
             state.settings.general_current_tip--;
         }
         else {
-            state.settings.general_current_tip = state.tips->count - 1;
+            state.settings.general_current_tip = n_tips - 1;
         }
-        labelTipOfTheDay->setText(state.tips->data[state.settings.general_current_tip]);
+        labelTipOfTheDay->setText(tips[state.settings.general_current_tip]);
     }
     else if (button == QWizard::CustomButton2) {
         state.settings.general_current_tip++;
-        if (state.settings.general_current_tip >= state.tips->count) {
+        if (state.settings.general_current_tip >= n_tips) {
             state.settings.general_current_tip = 0;
         }
-        labelTipOfTheDay->setText(state.tips->data[state.settings.general_current_tip]);
+        labelTipOfTheDay->setText(tips[state.settings.general_current_tip]);
     }
     else if (button == QWizard::CustomButton3) {
         wizardTipOfTheDay->close();
@@ -440,40 +443,40 @@ void MainWindow::iconResize(int iconSize)
     state.settings.general_icon_size = iconSize;
 }
 
-void MainWindow::icon16()
+void icon16(void)
 {
     qDebug("icon16()");
-    iconResize(16);
+    script_env.mainWin->iconResize(16);
 }
 
-void MainWindow::icon24()
+void icon24(void)
 {
     qDebug("icon24()");
-    iconResize(24);
+    script_env.mainWin->iconResize(24);
 }
 
-void MainWindow::icon32()
+void icon32(void)
 {
     qDebug("icon32()");
-    iconResize(32);
+    script_env.mainWin->iconResize(32);
 }
 
-void MainWindow::icon48()
+void icon48(void)
 {
     qDebug("icon48()");
-    iconResize(48);
+    script_env.mainWin->iconResize(48);
 }
 
-void MainWindow::icon64()
+void icon64(void)
 {
     qDebug("icon64()");
-    iconResize(64);
+    script_env.mainWin->iconResize(64);
 }
 
-void MainWindow::icon128()
+void icon128(void)
 {
     qDebug("icon128()");
-    iconResize(128);
+    script_env.mainWin->iconResize(128);
 }
 
 MdiWindow* MainWindow::activeMdiWindow()
@@ -483,12 +486,12 @@ MdiWindow* MainWindow::activeMdiWindow()
     return mdiWin;
 }
 
-View* MainWindow::activeView()
+View*
+activeView(void)
 {
     qDebug("activeView()");
-    MdiWindow* mdiWin = qobject_cast<MdiWindow*>(mdiArea->activeSubWindow());
-    if (mdiWin)
-    {
+    MdiWindow* mdiWin = qobject_cast<MdiWindow*>(script_env.mainWin->mdiArea->activeSubWindow());
+    if (mdiWin) {
         View* v = mdiWin->getView();
         return v;
     }
@@ -618,76 +621,81 @@ void MainWindow::layerPrevious()
 }
 
 // Zoom ToolBar
-void MainWindow::zoomRealtime()
+void zoom_real_time(void)
 {
     qDebug("zoomRealtime()");
     stub_implement("Implement zoomRealtime.");
 }
 
-void MainWindow::zoomPrevious()
+void zoom_previous(void)
 {
     qDebug("zoomPrevious()");
     stub_implement("Implement zoomPrevious.");
 }
 
-void MainWindow::zoomWindow()
+void zoom_window(void)
 {
     qDebug("zoomWindow()");
     View* gview = activeView();
-    if (gview) { gview->zoomWindow(); }
+    if (gview) {
+    	gview->zoomWindow();
+    }
 }
 
-void MainWindow::zoomDynamic()
+void zoom_dynamic(void)
 {
     qDebug("zoomDynamic()");
     stub_implement("Implement zoomDynamic.");
 }
 
-void MainWindow::zoomScale()
+void zoom_scale(void)
 {
     qDebug("zoomScale()");
     stub_implement("Implement zoomScale.");
 }
 
-void MainWindow::zoomCenter()
+void zoom_center(void)
 {
     qDebug("zoomCenter()");
     stub_implement("Implement zoomCenter.");
 }
 
-void MainWindow::zoomIn()
+void zoom_in(void)
 {
     qDebug("zoomIn()");
     View* gview = activeView();
-    if (gview) { gview->zoomIn(); }
+    if (gview) {
+        gview->zoomIn();
+    }
 }
 
-void MainWindow::zoomOut()
+void zoom_out(void)
 {
     qDebug("zoomOut()");
     View* gview = activeView();
-    if (gview) { gview->zoomOut(); }
+    if (gview) {
+        gview->zoomOut();
+    }
 }
 
-void MainWindow::zoomSelected()
+void zoom_selected(void)
 {
     qDebug("zoomSelected()");
     View* gview = activeView();
     QUndoStack* stack = gview->getUndoStack();
-    if (gview && stack)
-    {
+    if (gview && stack) {
         UndoableNavCommand* cmd = new UndoableNavCommand("ZoomSelected", gview, 0);
         stack->push(cmd);
     }
 }
 
-void MainWindow::zoomAll()
+void zoom_all(void)
 {
     qDebug("zoomAll()");
     stub_implement("Implement zoomAll.");
 }
 
-void MainWindow::zoomExtents()
+void zoom_extents(void)
 {
     qDebug("zoomExtents()");
     View* gview = activeView();
@@ -697,8 +705,9 @@ void MainWindow::zoomExtents()
         stack->push(cmd);
     }
 }
+
 // Pan SubMenu
-void MainWindow::panrealtime()
+void pan_real_time(void)
 {
     qDebug("panrealtime()");
     View* gview = activeView();
@@ -707,7 +716,7 @@ void MainWindow::panrealtime()
     }
 }
 
-void MainWindow::panpoint()
+void pan_point(void)
 {
     qDebug("panpoint()");
     View* gview = activeView();
@@ -716,7 +725,7 @@ void MainWindow::panpoint()
     }
 }
 
-void MainWindow::panLeft()
+void pan_left(void)
 {
     qDebug("panLeft()");
     View* gview = activeView();
@@ -727,7 +736,7 @@ void MainWindow::panLeft()
     }
 }
 
-void MainWindow::panRight()
+void pan_right(void)
 {
     qDebug("panRight()");
     View* gview = activeView();
@@ -738,7 +747,7 @@ void MainWindow::panRight()
     }
 }
 
-void MainWindow::panUp()
+void pan_up(void)
 {
     qDebug("panUp()");
     View* gview = activeView();
@@ -749,7 +758,7 @@ void MainWindow::panUp()
     }
 }
 
-void MainWindow::panDown()
+void pan_down(void)
 {
     qDebug("panDown()");
     View* gview = activeView();
@@ -760,22 +769,20 @@ void MainWindow::panDown()
     }
 }
 
-void MainWindow::dayVision()
+void day_vision(void)
 {
     View* gview = activeView();
-    if (gview)
-    {
+    if (gview) {
         gview->setBackgroundColor(qRgb(255,255,255)); //TODO: Make day vision color settings.
         gview->setCrossHairColor(qRgb(0,0,0));        //TODO: Make day vision color settings.
         gview->setGridColor(qRgb(0,0,0));             //TODO: Make day vision color settings.
     }
 }
 
-void MainWindow::nightVision()
+void night_vision(void)
 {
     View* gview = activeView();
-    if (gview)
-    {
+    if (gview) {
         gview->setBackgroundColor(qRgb(0,0,0));      //TODO: Make night vision color settings.
         gview->setCrossHairColor(qRgb(255,255,255)); //TODO: Make night vision color settings.
         gview->setGridColor(qRgb(255,255,255));      //TODO: Make night vision color settings.
@@ -875,7 +882,7 @@ void
 MainWindow::setTextFont(const QString& str)
 {
     textFontSelector->setCurrentFont(QFont(str));
-    state.settings.text_font = sdscpy(state.settings.text_font, qPrintable(str));
+    string_copy(state.settings.text_font, qPrintable(str));
 }
 
 void
@@ -968,7 +975,7 @@ void MainWindow::escapePressed()
     if (mdiWin) { mdiWin->escapePressed(); }
     QApplication::restoreOverrideCursor();
 
-    endCommand();
+    end_command();
 }
 
 void MainWindow::toggleGrid()
@@ -1040,7 +1047,7 @@ void MainWindow::runCommand()
     QAction* act = qobject_cast<QAction*>(sender());
     if (act) {
         qDebug("runCommand(%s)", qPrintable(act->objectName()));
-        prompt->endCommand();
+        prompt->end_command();
         prompt->setCurrentText(act->objectName());
         prompt->processInput();
     }
@@ -1050,29 +1057,42 @@ void MainWindow::runCommandMain(const QString& cmd)
 {
     qDebug("runCommandMain(%s)", qPrintable(cmd));
     QString fileName = "commands/" + cmd + "/" + cmd + ".js";
-    //if (!state.settings.selection_mode_pick_first) { clearSelection(); } //TODO: Uncomment this line when post-selection is available
-    engine.evaluate(cmd + "_main()", fileName);
+    //if (!state.settings.selection_mode_pick_first) { clear_selection(); } //TODO: Uncomment this line when post-selection is available
+    state.context = CONTEXT_MAIN;
+    call(cmd);
 }
 
 void MainWindow::runCommandClick(const QString& cmd, qreal x, qreal y)
 {
     qDebug("runCommandClick(%s, %.2f, %.2f)", qPrintable(cmd), x, y);
+    /*
     QString fileName = "commands/" + cmd + "/" + cmd + ".js";
     engine.evaluate(cmd + "_click(" + QString().setNum(x) + "," + QString().setNum(-y) + ")", fileName);
+    */
+    state.context = CONTEXT_CLICK;
+    call(cmd);
 }
 
 void MainWindow::runCommandMove(const QString& cmd, qreal x, qreal y)
 {
     qDebug("runCommandMove(%s, %.2f, %.2f)", qPrintable(cmd), x, y);
+    /*
     QString fileName = "commands/" + cmd + "/" + cmd + ".js";
     engine.evaluate(cmd + "_move(" + QString().setNum(x) + "," + QString().setNum(-y) + ")", fileName);
+    */
+    state.context = CONTEXT_MOVE;
+    call(cmd);
 }
 
 void MainWindow::runCommandContext(const QString& cmd, const QString& str)
 {
     qDebug("runCommandContext(%s, %s)", qPrintable(cmd), qPrintable(str));
+    /*
     QString fileName = "commands/" + cmd + "/" + cmd + ".js";
     engine.evaluate(cmd + "_context('" + str.toUpper() + "')", fileName);
+    */
+    state.context = CONTEXT_MENU;
+    call(cmd);
 }
 
 void MainWindow::runCommandPrompt(const QString& cmd, const QString& str)
@@ -1083,11 +1103,18 @@ void MainWindow::runCommandPrompt(const QString& cmd, const QString& str)
     QString safeStr = str;
     safeStr.replace("\\", "\\\\");
     safeStr.replace("\'", "\\\'");
+    state.context = CONTEXT_PROMPT;
     if (state.rapid_fire) {
+        /*
         engine.evaluate(cmd + "_prompt('" + safeStr + "')", fileName);
+        */
+        call(cmd);
     }
     else {
+        /*
         engine.evaluate(cmd + "_prompt('" + safeStr.toUpper() + "')", fileName);
+        */
+        call(cmd);
     }
 }
 
@@ -1101,9 +1128,10 @@ void MainWindow::blinkPrompt()
     prompt->startBlinking();
 }
 
-void MainWindow::setPromptPrefix(const QString& txt)
+/* FIXME */
+const char *translate_str(char *str)
 {
-    prompt->setPrefix(txt);
+    return (const char *)str;
 }
 
 void MainWindow::appendPromptHistory(const QString& txt)
@@ -1111,7 +1139,8 @@ void MainWindow::appendPromptHistory(const QString& txt)
     prompt->appendHistory(txt);
 }
 
-void MainWindow::initCommand()
+void
+init_command(void)
 {
     View* gview = activeView();
     if (gview) {
@@ -1119,7 +1148,8 @@ void MainWindow::initCommand()
     }
 }
 
-void MainWindow::endCommand()
+void
+end_command(void)
 {
     View* gview = activeView();
     if (gview) {
@@ -1127,7 +1157,7 @@ void MainWindow::endCommand()
         gview->previewOff();
         gview->disableMoveRapidFire();
     }
-    prompt->endCommand();
+    script_env.mainWin->prompt->end_command();
 }
 
 void MainWindow::messageBox(const QString& type, const QString& title, const QString& text)
@@ -1585,10 +1615,13 @@ void MainWindow::addToSelection(const QPainterPath path, Qt::ItemSelectionMode m
 {
 }
 
-void MainWindow::clearSelection()
+void
+clear_selection(void)
 {
     View* gview = activeView();
-    if (gview) { gview->clearSelection(); }
+    if (gview) {
+        gview->clear_selection();
+    }
 }
 
 void MainWindow::deleteSelected()

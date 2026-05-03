@@ -3,8 +3,25 @@ cmake_minimum_required(VERSION 3.16)
 project(embroidermodder VERSION 2.0.0 LANGUAGES C CXX)
 
 find_package(OpenGL REQUIRED)
-find_package(Qt6 REQUIRED COMPONENTS Core Widgets PrintSupport Qml)
-find_package(Qt6 REQUIRED COMPONENTS LinguistTools)
+find_package(Qt6 REQUIRED COMPONENTS Core Widgets PrintSupport)
+# FIXME: this breaks the build in the github workflow:
+# find_package(Qt6 REQUIRED COMPONENTS LinguistTools)
+
+set(RAYLIB_VERSION 6.0)
+find_package(raylib ${RAYLIB_VERSION} REQUIRED)
+if (NOT raylib_FOUND) # If there's none, fetch and build raylib
+  include(FetchContent)
+  FetchContent_Declare(
+    raylib
+    DOWNLOAD_EXTRACT_TIMESTAMP OFF
+    URL https://github.com/raysan5/raylib/archive/refs/tags/${RAYLIB_VERSION}.tar.gz
+  )
+  FetchContent_GetProperties(raylib)
+  if (NOT raylib_POPULATED) # Have we downloaded raylib yet?
+    set(FETCHCONTENT_QUIET NO)
+    FetchContent_MakeAvailable(raylib)
+  endif()
+endif()
 
 # FIXME: AUTOMOC is a source of a strange bug on MacOS where "-std=c99" is added as a
 # flag for the c++ compiler despite it not being added by this file. This is
@@ -19,6 +36,7 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+if(0)
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
 
 add_compile_options(
@@ -42,13 +60,13 @@ add_compile_options(
 	-Wall
 )
 endif()
+endif()
 
 set(SRC ${CMAKE_SOURCE_DIR}/src)
 set(DATA ${CMAKE_SOURCE_DIR}/data)
 
 add_subdirectory(src/libembroidery)
 add_subdirectory(extern/tomlc99)
-add_subdirectory(extern/sds)
 
 # The makers of CMake advise that you do not glob source files.
 #
@@ -56,19 +74,24 @@ add_subdirectory(extern/sds)
 #
 qt_add_executable(embroidermodder2
 	${SRC}/core/command-table.c
+	${SRC}/core/menu-data.c
+	${SRC}/core/toolbar-data.c
+	${SRC}/core/tips.c
 	${SRC}/core/load.c
 	${SRC}/core/object-data.c
 	${SRC}/core/object-data.h
-	${SRC}/core/sdsarray.c
 	${SRC}/core/settings.c
 	${SRC}/core/state.c
+	${SRC}/core/string.c
 	${SRC}/core/core.h
 
+	${SRC}/gui/gui.h
+	${SRC}/gui/raylib_main.c
 	${SRC}/gui/application.cpp
 	${SRC}/gui/application.h
+	${SRC}/gui/callbacks.cpp
 	${SRC}/gui/cmdprompt.cpp
 	${SRC}/gui/cmdprompt.h
-	${SRC}/gui/commands.cpp
 	${SRC}/gui/embdetails-dialog.cpp
 	${SRC}/gui/embdetails-dialog.h
 	${SRC}/gui/imagewidget.cpp
@@ -83,8 +106,6 @@ qt_add_executable(embroidermodder2
 	${SRC}/gui/mdiarea.h
 	${SRC}/gui/mdiwindow.cpp
 	${SRC}/gui/mdiwindow.h
-	${SRC}/gui/native-scripting.cpp
-	${SRC}/gui/native-scripting.h
 	${SRC}/gui/object-arc.cpp
 	${SRC}/gui/object-arc.h
 	${SRC}/gui/object-base.cpp
@@ -132,166 +153,64 @@ qt_add_executable(embroidermodder2
 	${SRC}/gui/view.cpp
 	${SRC}/gui/view.h
 
-	${DATA}/commands/about/about.ini
-	${DATA}/commands/about/about.js
-	${DATA}/commands/about/about.png
-	${DATA}/commands/circle/circle.ini
-	${DATA}/commands/circle/circle.js
-	${DATA}/commands/circle/circle.png
-	${DATA}/commands/day/day.ini
-	${DATA}/commands/day/day.js
-	${DATA}/commands/day/day.png
-	${DATA}/commands/distance/distance.ini
-	${DATA}/commands/distance/distance.js
-	${DATA}/commands/distance/distance.png
-	${DATA}/commands/dolphin/dolphin.ini
-	${DATA}/commands/dolphin/dolphin.js
-	${DATA}/commands/dolphin/dolphin.png
-	${DATA}/commands/ellipse/ellipse.ini
-	${DATA}/commands/ellipse/ellipse.js
-	${DATA}/commands/ellipse/ellipse.png
-	${DATA}/commands/erase/erase.ini
-	${DATA}/commands/erase/erase.js
-	${DATA}/commands/erase/erase.png
-	${DATA}/commands/exit/exit.ini
-	${DATA}/commands/exit/exit.js
-	${DATA}/commands/exit/exit.png
-	${DATA}/commands/heart/heart.ini
-	${DATA}/commands/heart/heart.js
-	${DATA}/commands/heart/heart.png
-	${DATA}/commands/help/help-2.png
-	${DATA}/commands/help/help.ini
-	${DATA}/commands/help/help.js
-	${DATA}/commands/help/help.png
-	${DATA}/commands/icon128/icon128.ini
-	${DATA}/commands/icon128/icon128.js
-	${DATA}/commands/icon128/icon128.png
-	${DATA}/commands/icon16/icon16.ini
-	${DATA}/commands/icon16/icon16.js
-	${DATA}/commands/icon16/icon16.png
-	${DATA}/commands/icon24/icon24.ini
-	${DATA}/commands/icon24/icon24.js
-	${DATA}/commands/icon24/icon24.png
-	${DATA}/commands/icon32/icon32.ini
-	${DATA}/commands/icon32/icon32.js
-	${DATA}/commands/icon32/icon32.png
-	${DATA}/commands/icon48/icon48.ini
-	${DATA}/commands/icon48/icon48.js
-	${DATA}/commands/icon48/icon48.png
-	${DATA}/commands/icon64/icon64.ini
-	${DATA}/commands/icon64/icon64.js
-	${DATA}/commands/icon64/icon64.png
-	${DATA}/commands/line/line.ini
-	${DATA}/commands/line/line.js
-	${DATA}/commands/line/line.png
-	${DATA}/commands/locatepoint/locatepoint.ini
-	${DATA}/commands/locatepoint/locatepoint.js
-	${DATA}/commands/locatepoint/locatepoint.png
-	${DATA}/commands/move/move.ini
-	${DATA}/commands/move/move.js
-	${DATA}/commands/move/move.png
-	${DATA}/commands/new/new.ini
-	${DATA}/commands/new/new.js
-	${DATA}/commands/new/new.png
-	${DATA}/commands/night/night.ini
-	${DATA}/commands/night/night.js
-	${DATA}/commands/night/night.png
-	${DATA}/commands/open/open.ini
-	${DATA}/commands/open/open.js
-	${DATA}/commands/open/open.png
-	${DATA}/commands/pandown/pandown.ini
-	${DATA}/commands/pandown/pandown.js
-	${DATA}/commands/pandown/pandown.png
-	${DATA}/commands/panleft/panleft.ini
-	${DATA}/commands/panleft/panleft.js
-	${DATA}/commands/panleft/panleft.png
-	${DATA}/commands/panright/panright.ini
-	${DATA}/commands/panright/panright.js
-	${DATA}/commands/panright/panright.png
-	${DATA}/commands/panup/panup.ini
-	${DATA}/commands/panup/panup.js
-	${DATA}/commands/panup/panup.png
-	${DATA}/commands/path/path.ini
-	${DATA}/commands/path/path.js
-	${DATA}/commands/path/path.png
-	${DATA}/commands/platform/platform.ini
-	${DATA}/commands/platform/platform.js
-	${DATA}/commands/point/point.ini
-	${DATA}/commands/point/point.js
-	${DATA}/commands/point/point.png
-	${DATA}/commands/polygon/polygon.ini
-	${DATA}/commands/polygon/polygon.js
-	${DATA}/commands/polygon/polygon.png
-	${DATA}/commands/polyline/polyline.ini
-	${DATA}/commands/polyline/polyline.js
-	${DATA}/commands/polyline/polyline.png
-	${DATA}/commands/quickleader/quickleader.ini
-	${DATA}/commands/quickleader/quickleader.js
-	${DATA}/commands/quickleader/quickleader.png
-	${DATA}/commands/rectangle/rectangle.ini
-	${DATA}/commands/rectangle/rectangle.js
-	${DATA}/commands/rectangle/rectangle.png
-	${DATA}/commands/redo/redo.ini
-	${DATA}/commands/redo/redo.js
-	${DATA}/commands/redo/redo.png
-	${DATA}/commands/rgb/rgb.ini
-	${DATA}/commands/rgb/rgb.js
-	${DATA}/commands/rgb/rgb.png
-	${DATA}/commands/rotate/rotate.ini
-	${DATA}/commands/rotate/rotate.js
-	${DATA}/commands/rotate/rotate.png
-	${DATA}/commands/sandbox/sandbox.ini
-	${DATA}/commands/sandbox/sandbox.js
-	${DATA}/commands/sandbox/sandbox.png
-	${DATA}/commands/scale/scale.ini
-	${DATA}/commands/scale/scale.js
-	${DATA}/commands/scale/scale.png
-	${DATA}/commands/selectall/selectall.ini
-	${DATA}/commands/selectall/selectall.js
-	${DATA}/commands/singlelinetext/singlelinetext.ini
-	${DATA}/commands/singlelinetext/singlelinetext.js
-	${DATA}/commands/singlelinetext/singlelinetext.png
-	${DATA}/commands/snowflake/snowflake.ini
-	${DATA}/commands/snowflake/snowflake.js
-	${DATA}/commands/snowflake/snowflake.png
-	${DATA}/commands/star/star.ini
-	${DATA}/commands/star/star.js
-	${DATA}/commands/star/star.png
-	${DATA}/commands/syswindows/syswindows.ini
-	${DATA}/commands/syswindows/syswindows.js
-	${DATA}/commands/tipoftheday/tipoftheday.ini
-	${DATA}/commands/tipoftheday/tipoftheday.js
-	${DATA}/commands/tipoftheday/tipoftheday.png
-	${DATA}/commands/undo/undo.ini
-	${DATA}/commands/undo/undo.js
-	${DATA}/commands/undo/undo.png
-	${DATA}/commands/windowcascade/windowcascade.ini
-	${DATA}/commands/windowcascade/windowcascade.js
-	${DATA}/commands/windowcascade/windowcascade.png
-	${DATA}/commands/windowclose/windowclose.ini
-	${DATA}/commands/windowclose/windowclose.js
-	${DATA}/commands/windowclose/windowclose.png
-	${DATA}/commands/windowcloseall/windowcloseall.ini
-	${DATA}/commands/windowcloseall/windowcloseall.js
-	${DATA}/commands/windowcloseall/windowcloseall.png
-	${DATA}/commands/windownext/windownext.ini
-	${DATA}/commands/windownext/windownext.js
-	${DATA}/commands/windownext/windownext.png
-	${DATA}/commands/windowprevious/windowprevious.ini
-	${DATA}/commands/windowprevious/windowprevious.js
-	${DATA}/commands/windowprevious/windowprevious.png
-	${DATA}/commands/windowtile/windowtile.ini
-	${DATA}/commands/windowtile/windowtile.js
-	${DATA}/commands/windowtile/windowtile.png
-	${DATA}/commands/zoomextents/zoomextents.ini
-	${DATA}/commands/zoomextents/zoomextents.js
-	${DATA}/commands/zoomextents/zoomextents.png
-	${DATA}/commands/zoomin/zoomin.ini
-	${DATA}/commands/zoomin/zoomin.js
-	${DATA}/commands/zoomin/zoomin.png
-	${DATA}/commands/zoomout/zoomout.ini
-	${DATA}/commands/zoomout/zoomout.js
-	${DATA}/commands/zoomout/zoomout.png
+	${SRC}/commands/commands.h
+	${SRC}/commands/about.c
+	${SRC}/commands/circle.c
+	${SRC}/commands/day.c
+	${SRC}/commands/distance.c
+	${SRC}/commands/dolphin.c
+	${SRC}/commands/ellipse.c
+	${SRC}/commands/erase.c
+	${SRC}/commands/exit.c
+	${SRC}/commands/heart.c
+	${SRC}/commands/help.c
+	${SRC}/commands/icon128.c
+	${SRC}/commands/icon16.c
+	${SRC}/commands/icon24.c
+	${SRC}/commands/icon32.c
+	${SRC}/commands/icon48.c
+	${SRC}/commands/icon64.c
+	${SRC}/commands/line.c
+	${SRC}/commands/locatepoint.c
+	${SRC}/commands/move.c
+	${SRC}/commands/new.c
+	${SRC}/commands/night.c
+	${SRC}/commands/open.c
+	${SRC}/commands/panrealtime.c
+	${SRC}/commands/panpoint.c
+	${SRC}/commands/pandown.c
+	${SRC}/commands/panleft.c
+	${SRC}/commands/panright.c
+	${SRC}/commands/panup.c
+	${SRC}/commands/path.c
+	${SRC}/commands/platform.c
+	${SRC}/commands/point.c
+	${SRC}/commands/polygon.c
+	${SRC}/commands/polyline.c
+	${SRC}/commands/quickleader.c
+	${SRC}/commands/rectangle.c
+	${SRC}/commands/redo.c
+	${SRC}/commands/rgb.c
+	${SRC}/commands/rotate.c
+	${SRC}/commands/sandbox.c
+	${SRC}/commands/scale.c
+	${SRC}/commands/selectall.c
+	${SRC}/commands/singlelinetext.c
+	${SRC}/commands/snowflake.c
+	${SRC}/commands/star.c
+	${SRC}/commands/syswindows.c
+	${SRC}/commands/test.c
+	${SRC}/commands/tipoftheday.c
+	${SRC}/commands/undo.c
+	${SRC}/commands/windowcascade.c
+	${SRC}/commands/windowclose.c
+	${SRC}/commands/windowcloseall.c
+	${SRC}/commands/windownext.c
+	${SRC}/commands/windowprevious.c
+	${SRC}/commands/windowtile.c
+	${SRC}/commands/zoomextents.c
+	${SRC}/commands/zoomin.c
+	${SRC}/commands/zoomout.c
 
 	${DATA}/help/index.html
 
@@ -691,110 +610,65 @@ qt_add_executable(embroidermodder2
 	${DATA}/samples/spiralgrid.csv
 	${DATA}/samples/Tux-R2000.dxf
 
-	${DATA}/tables/menus.toml
-	${DATA}/tables/tips.toml
-	${DATA}/tables/toolbars.toml
-
-	${DATA}/translations/afrikaans/commands_afrikaans.qm
 	${DATA}/translations/afrikaans/embroidermodder2_afrikaans.qm
-	${DATA}/translations/chinese/commands_chinese.qm
 	${DATA}/translations/chinese/embroidermodder2_chinese.qm
-	${DATA}/translations/czech/commands_czech.qm
 	${DATA}/translations/czech/embroidermodder2_czech.qm
-	${DATA}/translations/dutch/commands_dutch.qm
 	${DATA}/translations/dutch/embroidermodder2_dutch.qm
-	${DATA}/translations/english/commands_english.qm
 	${DATA}/translations/english/embroidermodder2_english.qm
-	${DATA}/translations/french/commands_french.qm
 	${DATA}/translations/french/embroidermodder2_french.qm
-	${DATA}/translations/german/commands_german.qm
 	${DATA}/translations/german/embroidermodder2_german.qm
-	${DATA}/translations/italian/commands_italian.qm
 	${DATA}/translations/italian/embroidermodder2_italian.qm
-	${DATA}/translations/japanese/commands_japanese.qm
 	${DATA}/translations/japanese/embroidermodder2_japanese.qm
-	${DATA}/translations/korean/commands_korean.qm
 	${DATA}/translations/korean/embroidermodder2_korean.qm
-	${DATA}/translations/latin/commands_latin.qm
 	${DATA}/translations/latin/embroidermodder2_latin.qm
-	${DATA}/translations/polish/commands_polish.qm
 	${DATA}/translations/polish/embroidermodder2_polish.qm
-	${DATA}/translations/portuguese/commands_portuguese.qm
 	${DATA}/translations/portuguese/embroidermodder2_portuguese.qm
-	${DATA}/translations/russian/commands_russian.qm
 	${DATA}/translations/russian/embroidermodder2_russian.qm
-	${DATA}/translations/spanish/commands_spanish.qm
 	${DATA}/translations/spanish/embroidermodder2_spanish.qm
-	${DATA}/translations/turkish/commands_turkish.qm
 	${DATA}/translations/turkish/embroidermodder2_turkish.qm
 
 	${DATA}/embroidermodder2.icns
 	${DATA}/embroidermodder2.ico
 	${DATA}/Info.plist
-	${DATA}/manifest.toml
 
 	${CMAKE_SOURCE_DIR}/LICENSE.md
 )
 
-qt_add_translations(embroidermodder2
-	TS_FILES
-	${DATA}/translations/afrikaans/commands_afrikaans.ts
-	${DATA}/translations/afrikaans/embroidermodder2_afrikaans.ts
-	${DATA}/translations/arabic/commands_arabic.ts
-	${DATA}/translations/arabic/embroidermodder2_arabic.ts
-	${DATA}/translations/chinese/commands_chinese.ts
-	${DATA}/translations/chinese/embroidermodder2_chinese.ts
-	${DATA}/translations/czech/commands_czech.ts
-	${DATA}/translations/czech/embroidermodder2_czech.ts
-	${DATA}/translations/danish/commands_danish.ts
-	${DATA}/translations/danish/embroidermodder2_danish.ts
-	${DATA}/translations/dutch/commands_dutch.ts
-	${DATA}/translations/dutch/embroidermodder2_dutch.ts
-	${DATA}/translations/english/commands_english.ts
-	${DATA}/translations/english/embroidermodder2_english.ts
-	${DATA}/translations/finnish/commands_finnish.ts
-	${DATA}/translations/finnish/embroidermodder2_finnish.ts
-	${DATA}/translations/french/commands_french.ts
-	${DATA}/translations/french/embroidermodder2_french.ts
-	${DATA}/translations/german/commands_german.ts
-	${DATA}/translations/german/embroidermodder2_german.ts
-	${DATA}/translations/greek/commands_greek.ts
-	${DATA}/translations/greek/embroidermodder2_greek.ts
-	${DATA}/translations/italian/commands_italian.ts
-	${DATA}/translations/italian/embroidermodder2_italian.ts
-	${DATA}/translations/japanese/commands_japanese.ts
-	${DATA}/translations/japanese/embroidermodder2_japanese.ts
-	${DATA}/translations/korean/commands_korean.ts
-	${DATA}/translations/korean/embroidermodder2_korean.ts
-	${DATA}/translations/latin/commands_latin.ts
-	${DATA}/translations/latin/embroidermodder2_latin.ts
-	${DATA}/translations/polish/commands_polish.ts
-	${DATA}/translations/polish/embroidermodder2_polish.ts
-	${DATA}/translations/portuguese/commands_portuguese.ts
-	${DATA}/translations/portuguese/embroidermodder2_portuguese.ts
-	${DATA}/translations/romanian/commands_romanian.ts
-	${DATA}/translations/romanian/embroidermodder2_romanian.ts
-	${DATA}/translations/russian/commands_russian.ts
-	${DATA}/translations/russian/embroidermodder2_russian.ts
-	${DATA}/translations/spanish/commands_spanish.ts
-	${DATA}/translations/spanish/embroidermodder2_spanish.ts
-	${DATA}/translations/swedish/commands_swedish.ts
-	${DATA}/translations/swedish/embroidermodder2_swedish.ts
-	${DATA}/translations/turkish/commands_turkish.ts
-	${DATA}/translations/turkish/embroidermodder2_turkish.ts)
+#qt_add_translations(embroidermodder2
+#	TS_FILES
+#	${DATA}/translations/afrikaans/embroidermodder2_afrikaans.ts
+#	${DATA}/translations/arabic/embroidermodder2_arabic.ts
+#	${DATA}/translations/chinese/embroidermodder2_chinese.ts
+#	${DATA}/translations/czech/embroidermodder2_czech.ts
+#	${DATA}/translations/danish/embroidermodder2_danish.ts
+#	${DATA}/translations/dutch/embroidermodder2_dutch.ts
+#	${DATA}/translations/english/embroidermodder2_english.ts
+#	${DATA}/translations/finnish/embroidermodder2_finnish.ts
+#	${DATA}/translations/french/embroidermodder2_french.ts
+#	${DATA}/translations/german/embroidermodder2_german.ts
+#	${DATA}/translations/greek/embroidermodder2_greek.ts
+#	${DATA}/translations/italian/embroidermodder2_italian.ts
+#	${DATA}/translations/japanese/embroidermodder2_japanese.ts
+#	${DATA}/translations/korean/embroidermodder2_korean.ts
+#	${DATA}/translations/latin/embroidermodder2_latin.ts
+#	${DATA}/translations/polish/embroidermodder2_polish.ts
+#	${DATA}/translations/portuguese/embroidermodder2_portuguese.ts
+#	${DATA}/translations/romanian/embroidermodder2_romanian.ts
+#	${DATA}/translations/russian/embroidermodder2_russian.ts
+#	${DATA}/translations/spanish/embroidermodder2_spanish.ts
+#	${DATA}/translations/swedish/embroidermodder2_swedish.ts
+#	${DATA}/translations/turkish/embroidermodder2_turkish.ts)
 
 # WARNING: This does NOT regenerate when the assets change, so you have to
 # rerun cmake to ensure that this retriggers.
 #
 file(COPY
-	"${DATA}/commands"
 	"${DATA}/images"
 	"${DATA}/icons"
 	"${DATA}/samples"
 	"${DATA}/translations"
 	"${DATA}/help"
 	"${DATA}/tables"
-	"${DATA}/manifest.toml"
 	"${CMAKE_SOURCE_DIR}/LICENSE.md"
 	DESTINATION "${CMAKE_CURRENT_BINARY_DIR}")
 
@@ -802,20 +676,22 @@ include_directories(
 	${CMAKE_SOURCE_DIR}/src/core
 	${CMAKE_SOURCE_DIR}/src/gui
 	${CMAKE_SOURCE_DIR}/src/libembroidery
+	${CMAKE_SOURCE_DIR}/src/commands
 	${CMAKE_SOURCE_DIR}/extern/tomlc99
-	${CMAKE_SOURCE_DIR}/extern/sds
+	${CMAKE_SOURCE_DIR}/extern/raygui/src
 )
 
 target_link_libraries(embroidermodder2 PRIVATE
 	Qt6::Core
 	Qt6::Widgets
 	Qt6::PrintSupport
-	Qt6::Qml
 	embroidery_static
 	tomlc99
-	sds
+	raylib
 	${OPENGL_LIBRARIES}
 )
+
+set_property(TARGET embroidermodder2 PROPERTY AUTOMOC_MOC_OPTIONS "")
 
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
 target_link_libraries(embroidermodder2 PRIVATE
@@ -833,8 +709,6 @@ else(WIN32)
 	target_link_libraries(embroidermodder2 PRIVATE m)
 endif()
 
-install(DIRECTORY "${PROJECT_SOURCE_DIR}/data/commands"
-    DESTINATION ".")
 install(DIRECTORY "${PROJECT_SOURCE_DIR}/data/help"
     DESTINATION ".")
 install(DIRECTORY "${PROJECT_SOURCE_DIR}/data/images"
@@ -848,7 +722,6 @@ install(DIRECTORY "${PROJECT_SOURCE_DIR}/data/tables"
 install(DIRECTORY "${PROJECT_SOURCE_DIR}/data/translations"
     DESTINATION ".")
 install(FILES
-        "${PROJECT_SOURCE_DIR}/data/manifest.toml"
         "${PROJECT_SOURCE_DIR}/LICENSE.md"
     DESTINATION ".")
 install(TARGETS embroidermodder2

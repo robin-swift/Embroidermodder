@@ -46,7 +46,7 @@
 #include "cmdprompt.h"
 #include "property-editor.h"
 #include "undo-editor.h"
-#include "native-scripting.h"
+#include "gui.h"
 #include "preview-dialog.h"
 
 #include "embroidery.h"
@@ -75,10 +75,7 @@ MainWindow::MainWindow() : QMainWindow(0)
     script_env.mainWin = this;
 
     //Verify that files/directories needed are actually present.
-    QFileInfo check(appDir + "/commands");
-    if (!check.exists())
-        QMessageBox::critical(this, tr("Path Error"), tr("Cannot locate: ") + check.absoluteFilePath());
-    check = QFileInfo(appDir + "/help");
+    QFileInfo check(appDir + "/help");
     if (!check.exists())
         QMessageBox::critical(this, tr("Path Error"), tr("Cannot locate: ") + check.absoluteFilePath());
     check = QFileInfo(appDir + "/icons");
@@ -88,14 +85,12 @@ MainWindow::MainWindow() : QMainWindow(0)
     if (!check.exists())
         QMessageBox::critical(this, tr("Path Error"), tr("Cannot locate: ") + check.absoluteFilePath());
     check = QFileInfo(appDir + "/samples");
-    if (!check.exists())
+    if (!check.exists()) {
         QMessageBox::critical(this, tr("Path Error"), tr("Cannot locate: ") + check.absoluteFilePath());
+    }
     check = QFileInfo(appDir + "/translations");
-    if (!check.exists())
+    if (!check.exists()) {
         QMessageBox::critical(this, tr("Path Error"), tr("Cannot locate: ") + check.absoluteFilePath());
-
-    if (!loadData()) {
-        exit();
     }
 
     QString lang = state.settings.general_language;
@@ -120,29 +115,40 @@ MainWindow::MainWindow() : QMainWindow(0)
 
     //Init
     mainWin = this;
-    //Menus
-    fileMenu     = new QMenu(tr("&File"),     this);
-    editMenu     = new QMenu(tr("&Edit"),     this);
-    viewMenu     = new QMenu(tr("&View"),     this);
-    windowMenu   = new QMenu(tr("&Window"),   this);
-    helpMenu     = new QMenu(tr("&Help"),     this);
-    //SubMenus
-    recentMenu   = new QMenu(tr("Open &Recent"), this);
-    zoomMenu     = new QMenu(tr("&Zoom"),        this);
-    panMenu      = new QMenu(tr("&Pan"),         this);
-    //Toolbars
-    toolbarFile       = addToolBar(tr("File"));
-    toolbarEdit       = addToolBar(tr("Edit"));
-    toolbarView       = addToolBar(tr("View"));
-    toolbarZoom       = addToolBar(tr("Zoom"));
-    toolbarPan        = addToolBar(tr("Pan"));
-    toolbarIcon       = addToolBar(tr("Icon"));
-    toolbarHelp       = addToolBar(tr("Help"));
-    toolbarLayer      = addToolBar(tr("Layer"));
+
+    /* Menus */
+    fileMenu = new QMenu(tr("&File"), this);
+    editMenu = new QMenu(tr("&Edit"), this);
+    viewMenu = new QMenu(tr("&View"), this);
+    drawMenu = new QMenu(tr("&Draw"), this);
+    dimensionMenu = new QMenu(tr("Dimen&sion"), this);
+    modifyMenu = new QMenu(tr("&Modify"), this);
+    toolsMenu = new QMenu(tr("&Tools"), this);
+    windowMenu = new QMenu(tr("&Window"), this);
+    helpMenu = new QMenu(tr("&Help"), this);
+    /* SubMenus */
+    recentMenu = new QMenu(tr("Open &Recent"), this);
+    zoomMenu = new QMenu(tr("&Zoom"), this);
+    panMenu = new QMenu(tr("&Pan"), this);
+
+    /* Toolbars */
+    toolbarFile = addToolBar(tr("File"));
+    toolbarEdit = addToolBar(tr("Edit"));
+    toolbarView = addToolBar(tr("View"));
+    toolbarZoom = addToolBar(tr("Zoom"));
+    toolbarPan = addToolBar(tr("Pan"));
+    toolbarIcon = addToolBar(tr("Icon"));
+    toolbarHelp = addToolBar(tr("Help"));
+    toolbarLayer = addToolBar(tr("Layer"));
     toolbarProperties = addToolBar(tr("Properties"));
-    toolbarText       = addToolBar(tr("Text"));
-    toolbarPrompt     = addToolBar(tr("Command Prompt"));
+    toolbarText = addToolBar(tr("Text"));
+    toolbarPrompt = addToolBar(tr("Command Prompt"));
+    toolbarDraw = addToolBar(tr("Draw"));
+    toolbarDimension = addToolBar(tr("Dimension"));
+    toolbarInquiry = addToolBar(tr("Inquiry"));
+    toolbarModify = addToolBar(tr("Modify"));
     toolbarPrompt->show();
+
     //Selectors
     layerSelector      = new QComboBox(this);
     colorSelector      = new QComboBox(this);
@@ -237,19 +243,6 @@ MainWindow::MainWindow() : QMainWindow(0)
     //setDockOptions(QMainWindow::AnimatedDocks | QMainWindow::AllowTabbedDocks | QMainWindow::VerticalTabs); //TODO: Load these from settings
     //tabifyDockWidget(dockPropEdit, dockUndoEdit); //TODO: load this from settings
 
-    // engine = new QJSEngine(this);
-    // FIXME: engine->installTranslatorFunctions();
-    engine.installExtensions(QJSEngine::ConsoleExtension);
-    javaInitNatives();
-
-    //Load all commands in a loop
-    QDir commandDir(appDir + "/commands");
-    QStringList cmdList = commandDir.entryList(QDir::Dirs | QDir::NoDotAndDotDot);
-    foreach(QString cmdName, cmdList)
-    {
-        javaLoadCommand(cmdName);
-    }
-
     statusbar = new StatusBar(this, this);
     this->setStatusBar(statusbar);
 
@@ -291,6 +284,11 @@ MainWindow::createAllActions()
         /* TODO: override the shortcuts here. */
         QAction *ACTION = createAction(command_table[i]);
         actionHash.insert(command_table[i].id, ACTION);
+
+        QStringList aliases = QString(command_table[i].aliases).split(", ");
+        foreach(QString alias, aliases) {
+            prompt->addCommand(alias, command_table[i].label);
+        }
     }
 
     actionHash.value(ACTION_windowclose)->setEnabled(state.num_docs > 0);
@@ -298,7 +296,7 @@ MainWindow::createAllActions()
 }
 
 QAction *
-MainWindow::createAction(CommandData command, bool scripted)
+MainWindow::createAction(CommandData command)
 {
     QString appDir = qApp->applicationDirPath();
 
@@ -325,23 +323,16 @@ MainWindow::createAction(CommandData command, bool scripted)
     }
     */
 
-    if (scripted) {
-        ACTION->setIcon(QIcon(appDir + "/commands/" + QString(command.label)
-            + "/" + QString(command.label) + ".png"));
-        connect(ACTION, SIGNAL(triggered()), this, SLOT(runCommand()));
+    switch (command.type) {
+    case CMD_TYPE_TOGGLE: {
+        ACTION->setCheckable(true);
+        connect(ACTION, &QAction::toggle, this, [=]() { call(command.label); });
+        break;
     }
-    else {
-        switch (command.type) {
-        case CMD_TYPE_TOGGLE: {
-            ACTION->setCheckable(true);
-            connect(ACTION, &QAction::toggle, this, [=]() { call(command.label); });
-            break;
-        }
-        default:
-        case CMD_TYPE_TRIGGER:
-            connect(ACTION, &QAction::triggered, this, [=]() { call(command.label); });
-            break;
-        }
+    default:
+    case CMD_TYPE_TRIGGER:
+        connect(ACTION, &QAction::triggered, this, [=]() { call(command.label); });
+        break;
     }
     return ACTION;
 }
@@ -408,7 +399,7 @@ load_sdsarray(QString filename, const char *key, sdsarray *arr)
 
     /* FIXME: check key is present */
 
-    sdsarray_empty(arr);
+    /* sdsarray_empty(arr); */
 
     toml_array_t* array = toml_array_in(table, key);
     for (int i=0; ; i++) {
@@ -416,27 +407,11 @@ load_sdsarray(QString filename, const char *key, sdsarray *arr)
         if (!str.ok) {
             break;
          }
-        sdsarray_append(arr, str.u.s);
+        /* FIXME: sdsarray_append(arr, str.u.s); */
         free(str.u.s);
     }
 
     fclose(fp);
-    return 1;
-}
-
-/*
- * This calls all of the other loaders: fully loading initialisation
- * outside of settings.
- */
-int
-MainWindow::loadData(void)
-{
-    if (!load_sdsarray("manifest.toml", "manifest", state.manifest)) {
-        return 0;
-    }
-    if (!load_sdsarray("tables/tips.toml", "tips", state.tips)) {
-        return 0;
-    }
     return 1;
 }
 
@@ -452,10 +427,11 @@ void MainWindow::recentMenuAboutToShow()
 
     QFileInfo recentFileInfo;
     QString recentValue;
-    for (int i = 0; i < state.settings.opensave_recent_list_of_files->count; ++i) {
+    /* HACK: Can '^' be at the start of filenames in unicode? */
+    for (int i = 0; state.settings.opensave_recent_list_of_files[i][0] != '^' && i < MAXTABLE - 1; ++i) {
         /* If less than the max amount of entries add to menu. */
         if (i < state.settings.opensave_recent_max_files) {
-            recentFileInfo = QFileInfo(state.settings.opensave_recent_list_of_files->data[i]);
+            recentFileInfo = QFileInfo(state.settings.opensave_recent_list_of_files[i]);
             if (recentFileInfo.exists() && validFileFormat(recentFileInfo.fileName())) {
                 recentValue.setNum(i+1);
                 QAction* rAction;
@@ -469,7 +445,7 @@ void MainWindow::recentMenuAboutToShow()
                     rAction = new QAction(recentValue + " " + recentFileInfo.fileName(), this);
                 }
                 rAction->setCheckable(false);
-                rAction->setData(QString(state.settings.opensave_recent_list_of_files->data[i]));
+                rAction->setData(QString(state.settings.opensave_recent_list_of_files[i]));
                 recentMenu->addAction(rAction);
                 connect(rAction, SIGNAL(triggered()), this, SLOT(openrecentfile()));
             }
@@ -477,9 +453,7 @@ void MainWindow::recentMenuAboutToShow()
     }
 
     /* Ensure the list only has max amount of entries */
-    if (state.settings.opensave_recent_list_of_files->count > state.settings.opensave_recent_max_files) {
-        state.settings.opensave_recent_list_of_files->count = state.settings.opensave_recent_max_files;
-    }
+    strcpy(state.settings.opensave_recent_list_of_files[MAXTABLE-1], "^END^");
 }
 
 void MainWindow::windowMenuAboutToShow()
@@ -767,10 +741,10 @@ void MainWindow::updateMenuToolbarStatusbar()
         toolbarLayer->show();
         toolbarText->show();
         toolbarProperties->show();
-
-        foreach(QToolBar* tb, toolbarHash) {
-            tb->show();
-        }
+        toolbarDraw->show();
+        toolbarDimension->show();
+        toolbarModify->show();
+        toolbarInquiry->show();
 
         //DockWidgets
         dockPropEdit->show();
@@ -781,11 +755,10 @@ void MainWindow::updateMenuToolbarStatusbar()
         menuBar()->addMenu(fileMenu);
         menuBar()->addMenu(editMenu);
         menuBar()->addMenu(viewMenu);
-
-        foreach(QMenu* menu, menuHash) {
-            menuBar()->addMenu(menu);
-        }
-
+        menuBar()->addMenu(drawMenu);
+        menuBar()->addMenu(dimensionMenu);
+        menuBar()->addMenu(modifyMenu);
+        menuBar()->addMenu(toolsMenu);
         menuBar()->addMenu(windowMenu);
         menuBar()->addMenu(helpMenu);
 
@@ -813,10 +786,10 @@ void MainWindow::updateMenuToolbarStatusbar()
         toolbarLayer->hide();
         toolbarText->hide();
         toolbarProperties->hide();
-
-        foreach(QToolBar* tb, toolbarHash) {
-            tb->hide();
-        }
+        toolbarDraw->hide();
+        toolbarDimension->hide();
+        toolbarInquiry->hide();
+        toolbarModify->hide();
 
         //DockWidgets
         dockPropEdit->hide();
@@ -995,34 +968,7 @@ void MainWindow::createFileMenu()
     //Do not allow the Recent Menu to be torn off. It's a pain in the ass to maintain.
     recentMenu->setTearOffEnabled(false);
 
-    fileMenu->addSeparator();
-    fileMenu->addAction(actionHash.value(ACTION_save));
-    fileMenu->addAction(actionHash.value(ACTION_saveas));
-    fileMenu->addSeparator();
-    fileMenu->addAction(actionHash.value(ACTION_print));
-    fileMenu->addSeparator();
-    fileMenu->addAction(actionHash.value(ACTION_windowclose));
-    fileMenu->addSeparator();
-    fileMenu->addAction(actionHash.value(ACTION_designdetails));
-    fileMenu->addSeparator();
-
-    fileMenu->addAction(actionHash.value(ACTION_exit));
-    fileMenu->setTearOffEnabled(false);
-}
-
-void MainWindow::createEditMenu()
-{
-    qDebug("MainWindow createEditMenu()");
-    menuBar()->addMenu(editMenu);
-    editMenu->addAction(actionHash.value(ACTION_undo));
-    editMenu->addAction(actionHash.value(ACTION_redo));
-    editMenu->addSeparator();
-    editMenu->addAction(actionHash.value(ACTION_cut));
-    editMenu->addAction(actionHash.value(ACTION_copy));
-    editMenu->addAction(actionHash.value(ACTION_paste));
-    editMenu->addSeparator();
-    editMenu->addAction(actionHash.value(ACTION_settingsdialog));
-    editMenu->setTearOffEnabled(true);
+    createMenu(fileMenu, "fileMenu", file_menu_data);
 }
 
 void MainWindow::createViewMenu()
@@ -1036,37 +982,11 @@ void MainWindow::createViewMenu()
     viewMenu->addSeparator();
     viewMenu->addMenu(zoomMenu);
     zoomMenu->setIcon(QIcon(appDir + "/icons/" + icontheme + "/zoom" + ".png"));
-    zoomMenu->addAction(actionHash.value(ACTION_zoomrealtime));
-    zoomMenu->addAction(actionHash.value(ACTION_zoomprevious));
-    zoomMenu->addSeparator();
-    zoomMenu->addAction(actionHash.value(ACTION_zoomwindow));
-    zoomMenu->addAction(actionHash.value(ACTION_zoomdynamic));
-    zoomMenu->addAction(actionHash.value(ACTION_zoomscale));
-    zoomMenu->addAction(actionHash.value(ACTION_zoomcenter));
-    zoomMenu->addSeparator();
-    zoomMenu->addAction(actionHash.value(ACTION_zoomin));
-    zoomMenu->addAction(actionHash.value(ACTION_zoomout));
-    zoomMenu->addSeparator();
-    zoomMenu->addAction(actionHash.value(ACTION_zoomselected));
-    zoomMenu->addAction(actionHash.value(ACTION_zoomall));
-    zoomMenu->addAction(actionHash.value(ACTION_zoomextents));
+    createMenu(zoomMenu, "zoomMenu", zoom_menu_data);
     viewMenu->addMenu(panMenu);
     panMenu->setIcon(QIcon(appDir + "/icons/" + icontheme + "/pan" + ".png"));
-    panMenu->addAction(actionHash.value(ACTION_panrealtime));
-    panMenu->addAction(actionHash.value(ACTION_panpoint));
-    panMenu->addSeparator();
-    panMenu->addAction(actionHash.value(ACTION_panleft));
-    panMenu->addAction(actionHash.value(ACTION_panright));
-    panMenu->addAction(actionHash.value(ACTION_panup));
-    panMenu->addAction(actionHash.value(ACTION_pandown));
-    viewMenu->addSeparator();
-    viewMenu->addAction(actionHash.value(ACTION_day));
-    viewMenu->addAction(actionHash.value(ACTION_night));
-    viewMenu->addSeparator();
-
-    viewMenu->setTearOffEnabled(true);
-    zoomMenu->setTearOffEnabled(true);
-    panMenu->setTearOffEnabled(true);
+    createMenu(panMenu, "panMenu", pan_menu_data);
+    createMenu(viewMenu, "viewMenu", view_menu_data);
 }
 
 void MainWindow::createWindowMenu()
@@ -1079,142 +999,57 @@ void MainWindow::createWindowMenu()
 
 }
 
-void MainWindow::createHelpMenu()
+void MainWindow::createMenu(QMenu *menu, const char *name, const char *data[])
 {
-    qDebug("MainWindow createHelpMenu()");
-    menuBar()->addMenu(helpMenu);
-    helpMenu->addAction(actionHash.value(ACTION_help));
-    helpMenu->addSeparator();
-    helpMenu->addAction(actionHash.value(ACTION_changelog));
-    helpMenu->addSeparator();
-    helpMenu->addAction(actionHash.value(ACTION_tipoftheday));
-    helpMenu->addSeparator();
-    helpMenu->addAction(actionHash.value(ACTION_about));
-    helpMenu->addSeparator();
-    helpMenu->addAction(actionHash.value(ACTION_whatsthis));
-    helpMenu->setTearOffEnabled(true);
+    qDebug("MainWindow createMenu(%s)", name);
+    menu->setObjectName(name);
+    for (int i=0; data[i][0] != '^'; i++) {
+        if (QString(data[i]) == "---") {
+            menu->addSeparator();
+        } else {
+            int id = command_id(data[i]);
+            menu->addAction(actionHash.value(id));
+        }
+    }
+    menu->setTearOffEnabled(false);
 }
 
 void MainWindow::createAllMenus()
 {
     qDebug("MainWindow createAllMenus()");
+    createMenu(editMenu, "editMenu", edit_menu_data);
+    createMenu(helpMenu, "helpMenu", help_menu_data);
+    createMenu(drawMenu, "drawMenu", draw_menu_data);
+    createMenu(dimensionMenu, "dimensionMenu", dimension_menu_data);
+    createMenu(toolsMenu, "toolsMenu", tools_menu_data);
+    createMenu(modifyMenu, "modifyMenu", modify_menu_data);
+
     createFileMenu();
-    createEditMenu();
+    menuBar()->addMenu(editMenu);
     createViewMenu();
+    menuBar()->addMenu(drawMenu);
+    menuBar()->addMenu(dimensionMenu);
+    menuBar()->addMenu(toolsMenu);
+    menuBar()->addMenu(modifyMenu);
     createWindowMenu();
-    createHelpMenu();
+    menuBar()->addMenu(helpMenu);
 
 }
 
-void MainWindow::createFileToolbar()
+void MainWindow::createToolbar(QToolBar *toolbar, const char *name, const char *data[])
 {
-    qDebug("MainWindow createFileToolbar()");
-
-    toolbarFile->setObjectName("toolbarFile");
-    toolbarFile->addAction(actionHash.value(ACTION_new));
-    toolbarFile->addAction(actionHash.value(ACTION_open));
-    toolbarFile->addAction(actionHash.value(ACTION_save));
-    toolbarFile->addAction(actionHash.value(ACTION_saveas));
-    toolbarFile->addAction(actionHash.value(ACTION_print));
-    toolbarFile->addAction(actionHash.value(ACTION_designdetails));
-
-    toolbarFile->addSeparator();
-    toolbarFile->addAction(actionHash.value(ACTION_undo));
-    toolbarFile->addAction(actionHash.value(ACTION_redo));
-    toolbarFile->addSeparator();
-    toolbarFile->addAction(actionHash.value(ACTION_help));
-
-    connect(toolbarFile, SIGNAL(topLevelChanged(bool)), this, SLOT(floatingChangedToolBar(bool)));
-}
-
-void MainWindow::createEditToolbar()
-{
-    qDebug("MainWindow createEditToolbar()");
-
-    toolbarEdit->setObjectName("toolbarEdit");
-    toolbarEdit->addAction(actionHash.value(ACTION_cut));
-    toolbarEdit->addAction(actionHash.value(ACTION_copy));
-    toolbarEdit->addAction(actionHash.value(ACTION_paste));
-
-    connect(toolbarEdit, SIGNAL(topLevelChanged(bool)), this, SLOT(floatingChangedToolBar(bool)));
-}
-
-void MainWindow::createViewToolbar()
-{
-    qDebug("MainWindow createViewToolbar()");
-
-    toolbarView->setObjectName("toolbarView");
-    toolbarView->addAction(actionHash.value(ACTION_day));
-    toolbarView->addAction(actionHash.value(ACTION_night));
-
-    connect(toolbarView, SIGNAL(topLevelChanged(bool)), this, SLOT(floatingChangedToolBar(bool)));
-}
-
-void MainWindow::createZoomToolbar()
-{
-    qDebug("MainWindow createZoomToolbar()");
-
-    toolbarZoom->setObjectName("toolbarZoom");
-    toolbarZoom->addAction(actionHash.value(ACTION_zoomwindow));
-    toolbarZoom->addAction(actionHash.value(ACTION_zoomdynamic));
-    toolbarZoom->addAction(actionHash.value(ACTION_zoomscale));
-    toolbarZoom->addSeparator();
-    toolbarZoom->addAction(actionHash.value(ACTION_zoomcenter));
-    toolbarZoom->addAction(actionHash.value(ACTION_zoomin));
-    toolbarZoom->addAction(actionHash.value(ACTION_zoomout));
-    toolbarZoom->addSeparator();
-    toolbarZoom->addAction(actionHash.value(ACTION_zoomselected));
-    toolbarZoom->addAction(actionHash.value(ACTION_zoomall));
-    toolbarZoom->addAction(actionHash.value(ACTION_zoomextents));
-
-    connect(toolbarZoom, SIGNAL(topLevelChanged(bool)), this, SLOT(floatingChangedToolBar(bool)));
-}
-
-void MainWindow::createPanToolbar()
-{
-    qDebug("MainWindow createPanToolbar()");
-
-    toolbarPan->setObjectName("toolbarPan");
-    toolbarPan->addAction(actionHash.value(ACTION_panrealtime));
-    toolbarPan->addAction(actionHash.value(ACTION_panpoint));
-    toolbarPan->addSeparator();
-    toolbarPan->addAction(actionHash.value(ACTION_panleft));
-    toolbarPan->addAction(actionHash.value(ACTION_panright));
-    toolbarPan->addAction(actionHash.value(ACTION_panup));
-    toolbarPan->addAction(actionHash.value(ACTION_pandown));
-
-    connect(toolbarPan, SIGNAL(topLevelChanged(bool)), this, SLOT(floatingChangedToolBar(bool)));
-}
-
-void MainWindow::createIconToolbar()
-{
-    qDebug("MainWindow createIconToolbar()");
-
-    toolbarIcon->setObjectName("toolbarIcon");
-    toolbarIcon->addAction(actionHash.value(ACTION_icon16));
-    toolbarIcon->addAction(actionHash.value(ACTION_icon24));
-    toolbarIcon->addAction(actionHash.value(ACTION_icon32));
-    toolbarIcon->addAction(actionHash.value(ACTION_icon48));
-    toolbarIcon->addAction(actionHash.value(ACTION_icon64));
-    toolbarIcon->addAction(actionHash.value(ACTION_icon128));
-
-    connect(toolbarIcon, SIGNAL(topLevelChanged(bool)), this, SLOT(floatingChangedToolBar(bool)));
-}
-
-void MainWindow::createHelpToolbar()
-{
-    qDebug("MainWindow createHelpToolbar()");
-
-    toolbarHelp->setObjectName("toolbarHelp");
-    toolbarHelp->addAction(actionHash.value(ACTION_help));
-    toolbarHelp->addSeparator();
-    toolbarHelp->addAction(actionHash.value(ACTION_changelog));
-    toolbarHelp->addSeparator();
-    toolbarHelp->addAction(actionHash.value(ACTION_about));
-    toolbarHelp->addSeparator();
-    toolbarHelp->addAction(actionHash.value(ACTION_whatsthis));
-
-    connect(toolbarHelp, SIGNAL(topLevelChanged(bool)), this, SLOT(floatingChangedToolBar(bool)));
+    qDebug("MainWindow createToolbar(%s)", name);
+    toolbar->setObjectName(name);
+    for (int i=0; data[i][0] != '^'; i++) {
+        if (QString(data[i]) == "---") {
+            toolbar->addSeparator();
+        } else {
+            int id = command_id(data[i]);
+            toolbar->addAction(actionHash.value(id));
+        }
+    }
+    connect(toolbar, SIGNAL(topLevelChanged(bool)), this,
+        SLOT(floatingChangedToolBar(bool)));
 }
 
 void MainWindow::createLayerToolbar()
@@ -1380,26 +1215,37 @@ void MainWindow::createAllToolbars()
 {
     qDebug("MainWindow createAllToolbars()");
 
-    createFileToolbar();
-    createEditToolbar();
-    createViewToolbar();
-    createZoomToolbar();
-    createPanToolbar();
-    createIconToolbar();
-    createHelpToolbar();
+    createToolbar(toolbarFile, "toolbarFile", file_toolbar_data);
+    createToolbar(toolbarEdit, "toolbarEdit", edit_toolbar_data);
+    createToolbar(toolbarView, "toolbarview", view_toolbar_data);
+    createToolbar(toolbarZoom, "toolbarZoom", zoom_toolbar_data);
+    createToolbar(toolbarPan, "toolbarPan", pan_toolbar_data);
+    createToolbar(toolbarIcon, "toolbarIcon", icon_toolbar_data);
+    createToolbar(toolbarHelp, "toolbarHelp", help_toolbar_data);
     createLayerToolbar();
     createPropertiesToolbar();
     createTextToolbar();
     createPromptToolbar();
+    createToolbar(toolbarDraw, "toolbarDraw", draw_toolbar_data);
+    createToolbar(toolbarDimension, "toolbarDimension", dimension_toolbar_data);
+    createToolbar(toolbarInquiry, "toolbarInquiry", inquiry_toolbar_data);
+    createToolbar(toolbarModify, "toolbarModify", modify_toolbar_data);
 
-    // Horizontal
+    /* Horizontal */
     toolbarView->setOrientation(Qt::Horizontal);
     toolbarZoom->setOrientation(Qt::Horizontal);
     toolbarLayer->setOrientation(Qt::Horizontal);
     toolbarProperties->setOrientation(Qt::Horizontal);
     toolbarText->setOrientation(Qt::Horizontal);
     toolbarPrompt->setOrientation(Qt::Horizontal);
-    // Top
+
+    /* Vertical */
+    toolbarDraw->setOrientation(Qt::Vertical);
+    toolbarDimension->setOrientation(Qt::Vertical);
+    toolbarInquiry->setOrientation(Qt::Vertical);
+    toolbarModify->setOrientation(Qt::Vertical);
+
+    /* Top */
     addToolBarBreak(Qt::TopToolBarArea);
     addToolBar(Qt::TopToolBarArea, toolbarFile);
     addToolBar(Qt::TopToolBarArea, toolbarEdit);
@@ -1414,7 +1260,15 @@ void MainWindow::createAllToolbars()
     addToolBar(Qt::TopToolBarArea, toolbarProperties);
     addToolBarBreak(Qt::TopToolBarArea);
     addToolBar(Qt::TopToolBarArea, toolbarText);
-    // Bottom
+
+    /* Left */
+    addToolBar(Qt::LeftToolBarArea, toolbarDraw);
+    addToolBar(Qt::LeftToolBarArea, toolbarDimension);
+    addToolBarBreak(Qt::LeftToolBarArea);
+    addToolBar(Qt::LeftToolBarArea, toolbarInquiry);
+    addToolBar(Qt::LeftToolBarArea, toolbarModify);
+
+    /* Bottom */
     addToolBar(Qt::BottomToolBarArea, toolbarPrompt);
 
     //zoomToolBar->setToolButtonStyle(Qt::ToolButtonTextOnly);

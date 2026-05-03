@@ -9,39 +9,62 @@ on:
   pull_request:
   workflow_dispatch:
 
+defaults:
+  run:
+    shell: bash
+
 jobs:
   build-linux:
+    strategy:
+      matrix:
+        compiler: [clang]
     runs-on: ubuntu-latest
     steps:
-      - uses: action/checkout@v6
+      - uses: actions/checkout@v6
         with:
           ref: 'current'
       - name: Build
+        env:
+          CC: ${{ matrix.compiler }}
         run: bash bin/build.sh "Ubuntu"
-      - uses: action/upload-artifact@v7
+      - uses: actions/upload-artifact@v7
         with:
-          path: embroidermodder/build/embroidermodder*.zip.gz
+          path: build/embroidermodder*.tar.gz
 
   build-macos:
     runs-on: macos-latest
+    strategy:
+      matrix:
+        compiler: [clang]
+        cxxcompiler: [clang++]
     steps:
-      - uses: action/checkout@v6
+      - uses: actions/checkout@v6
         with:
           ref: 'current'
       - name: Build
+        env:
+          CC: ${{ matrix.compiler }}
+          CXX: ${{ matrix.cxxcompiler }}
         run: bash bin/build.sh "MacOS"
-      - uses: action/upload-artifact@v7
+      - uses: actions/upload-artifact@v7
         with:
-          path: embroidermodder/build/embroidermodder*.app
+          path: build/embroidermodder*.app
 
   build-windows:
     runs-on: windows-latest
+    strategy:
+      matrix:
+        compiler: [clang]
+        cxxcompiler: [clang++]
     steps:
-      - uses: action/checkout@v6
+      - uses: actions/checkout@v6
         with:
           ref: 'current'
       - name: Build
+        env:
+          CC: ${{ matrix.compiler }}
+          CXX: ${{ matrix.cxxcompiler }}
         run: bash bin/build.sh "Windows"
-      - uses: action/upload-artifact@v7
+      - uses: actions/upload-artifact@v7
         with:
-          path: embroidermodder/build/embroidermodder*.exe
+          path: build/embroidermodder*.exe

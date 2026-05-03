@@ -1148,7 +1148,7 @@ void View::zoomWindow()
 {
     zoomWindowActive = true;
     selectingActive = false;
-    clearSelection();
+    clear_selection();
 }
 
 void View::zoomSelected()
@@ -1335,14 +1335,14 @@ void View::mousePressEvent(QMouseEvent* event)
                     if (state.shift) {
                         QList<QGraphicsItem*> itemList = gscene->items(path, Qt::ContainsItemShape);
                         if (!itemList.size())
-                            clearSelection();
+                            clear_selection();
                         else {
                             foreach(QGraphicsItem* item, itemList)
                                 item->setSelected(!item->isSelected()); //Toggle selected
                         }
                     }
                     else {
-                        clearSelection();
+                        clear_selection();
                         QList<QGraphicsItem*> itemList = gscene->items(path, Qt::ContainsItemShape);
                         foreach(QGraphicsItem* item, itemList)
                             item->setSelected(true);
@@ -1366,14 +1366,14 @@ void View::mousePressEvent(QMouseEvent* event)
                     if (state.shift) {
                         QList<QGraphicsItem*> itemList = gscene->items(path, Qt::IntersectsItemShape);
                         if (!itemList.size())
-                            clearSelection();
+                            clear_selection();
                         else {
                             foreach(QGraphicsItem* item, itemList)
                                 item->setSelected(!item->isSelected()); //Toggle selected
                         }
                     }
                     else {
-                        clearSelection();
+                        clear_selection();
                         QList<QGraphicsItem*> itemList = gscene->items(path, Qt::IntersectsItemShape);
                         foreach(QGraphicsItem* item, itemList)
                             item->setSelected(true);
@@ -1405,7 +1405,7 @@ void View::mousePressEvent(QMouseEvent* event)
         }
         if (zoomWindowActive) {
             fitInView(path.boundingRect(), Qt::KeepAspectRatio);
-            clearSelection();
+            clear_selection();
         }
     }
     if (event->button() == Qt::MiddleButton) {
@@ -1755,7 +1755,7 @@ void View::contextMenuEvent(QContextMenuEvent* event)
 
         QAction* clearAction = new QAction("Cle&ar Selection", this);
         clearAction->setStatusTip("Removes all objects from the selection set.");
-        connect(clearAction, SIGNAL(triggered()), this, SLOT(clearSelection()));
+        connect(clearAction, SIGNAL(triggered()), this, SLOT(clear_selection()));
         menu.addAction(clearAction);
     }
 
@@ -1790,7 +1790,7 @@ void View::escapePressed()
     selectingActive = false;
     selectBox->hide();
     if (grippingActive) stopGripping(false);
-    else clearSelection();
+    else clear_selection();
 }
 
 void View::startGripping(BaseObject* obj)
@@ -1821,7 +1821,7 @@ void View::stopGripping(bool accept)
     sceneGripPoint = sceneRect().topLeft();
 }
 
-void View::clearSelection()
+void View::clear_selection()
 {
     gscene->clearSelection();
 }
@@ -1872,7 +1872,7 @@ void View::copy()
     }
 
     copySelected();
-    clearSelection();
+    clear_selection();
 }
 
 void View::copySelected()
@@ -2036,14 +2036,14 @@ QList<QGraphicsItem*> View::createObjectList(QList<QGraphicsItem*> list)
 
 void View::repeatAction()
 {
-    mainWin->prompt->endCommand();
+    mainWin->prompt->end_command();
     mainWin->prompt->setCurrentText(state.last_command);
     mainWin->prompt->processInput();
 }
 
 void View::moveAction()
 {
-    mainWin->prompt->endCommand();
+    mainWin->prompt->end_command();
     mainWin->prompt->setCurrentText("move");
     mainWin->prompt->processInput();
 }
@@ -2070,7 +2070,7 @@ void View::moveSelected(qreal dx, qreal dy)
 
 void View::rotateAction()
 {
-    mainWin->prompt->endCommand();
+    mainWin->prompt->end_command();
     mainWin->prompt->setCurrentText("rotate");
     mainWin->prompt->processInput();
 }
@@ -2117,7 +2117,7 @@ void View::mirrorSelected(qreal x1, qreal y1, qreal x2, qreal y2)
 
 void View::scaleAction()
 {
-    mainWin->prompt->endCommand();
+    mainWin->prompt->end_command();
     mainWin->prompt->setCurrentText("scale");
     mainWin->prompt->processInput();
 }

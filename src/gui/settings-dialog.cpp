@@ -1657,29 +1657,29 @@ void Settings_Dialog::addColorsToComboBox(QComboBox* comboBox)
 void
 Settings_Dialog::comboBoxLanguageCurrentIndexChanged(const QString& lang)
 {
-    state.dialog.general_language = sdscpy(state.dialog.general_language,
+    string_copy(state.dialog.general_language,
         qPrintable(lang.toLower()));
 }
 
 void
 Settings_Dialog::comboBoxIconThemeCurrentIndexChanged(const QString& theme)
 {
-    state.dialog.general_icon_theme = sdscpy(state.dialog.general_icon_theme,
+    string_copy(state.dialog.general_icon_theme,
         qPrintable(theme));
 }
 
 void Settings_Dialog::comboBoxIconSizeCurrentIndexChanged(int index)
 {
     QComboBox* comboBox = qobject_cast<QComboBox*>(sender());
-    if (comboBox)
-    {
+    if (comboBox) {
         bool ok = 0;
         state.dialog.general_icon_size = comboBox->itemData(index).toUInt(&ok);
         if (!ok)
             state.dialog.general_icon_size = 16;
     }
-    else
+    else {
         state.dialog.general_icon_size = 16;
+    }
 }
 
 void Settings_Dialog::checkBoxGeneralMdiBGUseLogoStateChanged(int checked)
@@ -1699,7 +1699,7 @@ void Settings_Dialog::chooseGeneralMdiBackgroundLogo()
             tr("Images (*.bmp *.png *.jpg)"));
 
         if (!selectedImage.isNull()) {
-            state.accept.general_mdi_bg_logo = sdscpy(state.accept.general_mdi_bg_logo,
+            string_copy(state.accept.general_mdi_bg_logo,
                 qPrintable(selectedImage));
         }
 
@@ -1725,7 +1725,7 @@ void Settings_Dialog::chooseGeneralMdiBackgroundTexture()
                         tr("Images (*.bmp *.png *.jpg)"));
 
         if (!selectedImage.isNull()) {
-            state.accept.general_mdi_bg_texture = sdscpy(state.accept.general_mdi_bg_texture,
+            string_copy(state.accept.general_mdi_bg_texture,
                 qPrintable(selectedImage));
         }
 
@@ -2131,14 +2131,14 @@ void Settings_Dialog::currentPromptBackgroundColorChanged(const QColor& color)
 
 void Settings_Dialog::comboBoxPromptFontFamilyCurrentIndexChanged(const QString& family)
 {
-    state.preview.prompt_font_family = sdscpy(state.preview.prompt_font_family,
+    string_copy(state.preview.prompt_font_family,
         qPrintable(family));
     mainWin->prompt->setPromptFontFamily(state.preview.prompt_font_family);
 }
 
 void Settings_Dialog::comboBoxPromptFontStyleCurrentIndexChanged(const QString& style)
 {
-    state.preview.prompt_font_style = sdscpy(state.preview.prompt_font_style,
+    string_copy(state.preview.prompt_font_style,
         qPrintable(style));
     mainWin->prompt->setPromptFontStyle(state.preview.prompt_font_style);
 }
@@ -2173,7 +2173,7 @@ void Settings_Dialog::checkBoxCustomFilterStateChanged(int checked)
         else {
             filter.remove("*." + format, Qt::CaseInsensitive);
         }
-        state.dialog.opensave_custom_filter = sdscpy(state.dialog.opensave_custom_filter,
+        string_copy(state.dialog.opensave_custom_filter,
             qPrintable(filter));
         //dialog.opensave_custom_filter = checked; //TODO
     }
@@ -2182,13 +2182,13 @@ void Settings_Dialog::checkBoxCustomFilterStateChanged(int checked)
 void Settings_Dialog::buttonCustomFilterSelectAllClicked()
 {
     emit buttonCustomFilterSelectAll(true);
-    state.dialog.opensave_custom_filter = sdscpy(state.dialog.opensave_custom_filter, "supported");
+    string_copy(state.dialog.opensave_custom_filter, "supported");
 }
 
 void Settings_Dialog::buttonCustomFilterClearAllClicked()
 {
     emit buttonCustomFilterClearAll(false);
-    state.dialog.opensave_custom_filter = sdscpy(state.dialog.opensave_custom_filter, "");
+    string_copy(state.dialog.opensave_custom_filter, "");
 }
 
 void Settings_Dialog::spinBoxRecentMaxFilesValueChanged(int value)
@@ -2319,7 +2319,7 @@ void Settings_Dialog::checkBoxGridLoadFromFileStateChanged(int checked)
 
 void Settings_Dialog::comboBoxGridTypeCurrentIndexChanged(const QString& type)
 {
-    state.dialog.grid_type = sdscpy(state.dialog.grid_type, qPrintable(type));
+    string_copy(state.dialog.grid_type, qPrintable(type));
 
     QObject* senderObj = sender();
     if (senderObj)
@@ -2710,8 +2710,8 @@ void Settings_Dialog::acceptChanges()
     state.dialog.general_mdi_bg_use_logo = state.preview.general_mdi_bg_use_logo;
     state.dialog.general_mdi_bg_use_texture = state.preview.general_mdi_bg_use_texture;
     state.dialog.general_mdi_bg_use_color = state.preview.general_mdi_bg_use_color;
-    state.dialog.general_mdi_bg_logo = state.accept.general_mdi_bg_logo;
-    state.dialog.general_mdi_bg_texture = state.accept.general_mdi_bg_texture;
+    string_copy(state.dialog.general_mdi_bg_logo, state.accept.general_mdi_bg_logo);
+    string_copy(state.dialog.general_mdi_bg_texture, state.accept.general_mdi_bg_texture);
     state.dialog.general_mdi_bg_color = state.accept.general_mdi_bg_color;
     state.dialog.display_show_scrollbars = state.preview.display_show_scrollbars;
     state.dialog.display_crosshair_color = state.accept.display_crosshair_color;
@@ -2723,8 +2723,8 @@ void Settings_Dialog::acceptChanges()
     state.dialog.display_selectbox_alpha = state.preview.display_selectbox_alpha;
     state.dialog.prompt_text_color = state.accept.prompt_text_color;
     state.dialog.prompt_bg_color = state.accept.prompt_bg_color;
-    state.dialog.prompt_font_family = state.preview.prompt_font_family;
-    state.dialog.prompt_font_style = state.preview.prompt_font_style;
+    string_copy(state.dialog.prompt_font_family, state.preview.prompt_font_family);
+    string_copy(state.dialog.prompt_font_style, state.preview.prompt_font_style);
     state.dialog.prompt_font_size = state.preview.prompt_font_size;
     if (state.dialog.grid_color_match_crosshair) {
         state.dialog.grid_color = state.accept.display_crosshair_color;

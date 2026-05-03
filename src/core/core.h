@@ -13,14 +13,24 @@ extern "C" {
 #include <stdbool.h>
 #include <inttypes.h>
 
-#include "sds.h"
 #include "toml.h"
+#include "embroidery.h"
+
+#define CONTEXT_MAIN                    0
+#define CONTEXT_MENU                    1
+#define CONTEXT_PROMPT                  2
+#define CONTEXT_CLICK                   3
+#define CONTEXT_MOVE                    4
 
 #define SDSARRAY_CHUNK                100
+#define MAXSTR                       1024
+#define MAXTABLE                      200
 
 enum COMMAND_ACTIONS
 {
     ACTION_donothing,
+
+    ACTION_test,
 
     ACTION_new,
     ACTION_open,
@@ -101,10 +111,33 @@ enum COMMAND_ACTIONS
     ACTION_day,
     ACTION_night,
 
+    ACTION_circle,
+    ACTION_distance,
+    ACTION_dolphin,
+    ACTION_ellipse,
+    ACTION_erase,
+    ACTION_heart,
+    ACTION_line,
+    ACTION_locatepoint,
+    ACTION_move,
+    ACTION_path,
+    ACTION_platform,
+    ACTION_point,
+    ACTION_polygon,
+    ACTION_polyline,
+    ACTION_quickleader,
+    ACTION_rectangle,
+    ACTION_rgb,
+    ACTION_rotate,
+    ACTION_scale,
+    ACTION_selectall,
+    ACTION_singlelinetext,
+    ACTION_snowflake,
+    ACTION_star,
+    ACTION_syswindows,
+
     //TODO: ACTION_spellcheck,
     //TODO: ACTION_quickselect,
-
-    ACTION_scripted,
 
     ACTION_null
 };
@@ -115,21 +148,21 @@ enum COMMAND_TYPE
     CMD_TYPE_TRIGGER
 };
 
-typedef struct SDSArray_ {
-    sds *data;
+typedef struct StringArray_ {
+    char data[MAXSTR];
     int count;
     int memory;
 } sdsarray;
 
 typedef struct Settings_ {
-    sds general_language;
-    sds general_icon_theme;
+    char general_language[MAXSTR];
+    char general_icon_theme[MAXSTR];
     int general_icon_size;
     bool general_mdi_bg_use_logo;
     bool general_mdi_bg_use_texture;
     bool general_mdi_bg_use_color;
-    sds general_mdi_bg_logo;
-    sds general_mdi_bg_texture;
+    char general_mdi_bg_logo[MAXSTR];
+    char general_mdi_bg_texture[MAXSTR];
     uint32_t general_mdi_bg_color;
     bool general_tip_of_the_day;
     uint16_t general_current_tip;
@@ -153,25 +186,25 @@ typedef struct Settings_ {
     double display_zoomscale_in;
     double display_zoomscale_out;
     uint8_t display_crosshair_percent;
-    sds display_units;
+    char display_units[MAXSTR];
     uint32_t prompt_text_color;
     uint32_t prompt_bg_color;
-    sds prompt_font_family;
-    sds prompt_font_style;
+    char prompt_font_family[MAXSTR];
+    char prompt_font_style[MAXSTR];
     uint8_t prompt_font_size;
     bool prompt_save_history;
     bool prompt_save_history_as_html;
-    sds prompt_save_history_filename;
-    sds opensave_custom_filter;
-    sds opensave_open_format;
+    char prompt_save_history_filename[MAXSTR];
+    char opensave_custom_filter[MAXSTR];
+    char opensave_open_format[MAXSTR];
     bool opensave_open_thumbnail;
-    sds opensave_save_format;
+    char opensave_save_format[MAXSTR];
     bool opensave_save_thumbnail;
     uint8_t opensave_recent_max_files;
-    sdsarray *opensave_recent_list_of_files;
-    sds opensave_recent_directory;
+    char opensave_recent_list_of_files[MAXTABLE][MAXSTR];
+    char opensave_recent_directory[MAXSTR];
     uint8_t opensave_trim_dst_num_jumps;
-    sds printing_default_device;
+    char printing_default_device[MAXSTR];
     bool printing_use_last_device;
     bool printing_disable_bg;
     bool grid_show_on_load;
@@ -179,7 +212,7 @@ typedef struct Settings_ {
     bool grid_color_match_crosshair;
     uint32_t grid_color;
     bool grid_load_from_file;
-    sds grid_type;
+    char grid_type[MAXSTR];
     bool grid_center_on_origin;
     double grid_center_x;
     double grid_center_y;
@@ -221,7 +254,7 @@ typedef struct Settings_ {
     uint32_t selection_hotgrip_color;
     uint8_t selection_grip_size;
     uint8_t selection_pickbox_size;
-    sds text_font;
+    char text_font[MAXSTR];
     double text_size;
     double text_angle;
     bool text_style_bold;
@@ -242,9 +275,9 @@ typedef struct State_ {
     Settings dialog;
 
     /* Paths */
-    sds settings_dir;
-    sds settings_path;
-    sds app_dir;
+    char settings_dir[MAXSTR];
+    char settings_path[MAXSTR];
+    char app_dir[MAXSTR];
 
     /* Documents */
     int32_t num_docs;
@@ -257,37 +290,14 @@ typedef struct State_ {
     bool rapid_fire;
     bool is_blinking;
     bool blink_state;
-    sds command_line;
-    sds prefix;
-    sds current_command;
-    sds last_command;
-    sdsarray *arguments;
-
-    /* Configuration tables */
-    sdsarray *manifest;
-    sdsarray *tips;
-    sdsarray *aliases;
-
-    sdsarray *file_menu;
-    sdsarray *edit_menu;
-    sdsarray *view_menu;
-    sdsarray *window_menu;
-    sdsarray *help_menu;
-    sdsarray *recent_menu;
-    sdsarray *zoom_menu;
-    sdsarray *pan_menu;
-
-    sdsarray *file_toolbar;
-    sdsarray *edit_toolbar;
-    sdsarray *view_toolbar;
-    sdsarray *zoom_toolbar;
-    sdsarray *pan_toolbar;
-    sdsarray *icon_toolbar;
-    sdsarray *help_toolbar;
-    sdsarray *layer_toolbar;
-    sdsarray *text_toolbar;
-    sdsarray *properties_toolbar;
-    sdsarray *prompt_toolbar;
+    char command_line[MAXSTR];
+    char prefix[MAXSTR];
+    char current_command[MAXSTR];
+    char last_command[MAXSTR];
+    char arguments[MAXTABLE][MAXSTR];
+    EmbVector points[10];
+    int8_t points_set;
+    int8_t context;
 } State;
 
 typedef struct CommandData_ {
@@ -298,8 +308,12 @@ typedef struct CommandData_ {
     char statustip[1000];
     char shortcut[50];
     char mac_shortcut[50];
+    char aliases[1000];
     int (*command)(State *state);
 } CommandData;
+
+int table_length(const char *tips[]);
+int command_id(const char *cmd);
 
 char *toml_readstr(toml_table_t *table, const char *key, const char *default_value, char *result);
 int32_t toml_readint(toml_table_t *table, const char *key, int32_t default_value);
@@ -312,6 +326,9 @@ void sdsarray_empty(sdsarray *arr);
 void sdsarray_copy(sdsarray *dest, sdsarray *src);
 void sdsarray_free(sdsarray *a);
 
+int string_len(char *src);
+int string_copy(char *dest, const char *src);
+
 void settings_create(Settings *settings); /* FIXME: convert to Settings *settings_create(void); */
 int settings_load(Settings *settings, int *window_pos, int *window_size);
 int settings_save(Settings *settings, int *window_pos, int *window_size);
@@ -322,95 +339,43 @@ void settings_free(Settings *settings);
 void state_create(char *settings_dir, char *app_dir);
 void state_free(void);
 
-/* COMMANDS */
-int do_nothing_cmd(State *state);
+int call(State *state, const char *cmd);
 
-int new_cmd(State *state);
-int open_cmd(State *state);
-int save_cmd(State *state);
-int save_as_cmd(State *state);
-int print_cmd(State *state);
-int design_details_cmd(State *state);
-int exit_cmd(State *state);
-int cut_cmd(State *state);
-int copy_cmd(State *state);
-int paste_cmd(State *state);
+/* Configuration: note that this is all constant. */
+extern const CommandData command_table[];
 
-int undo_cmd(State *state);
-int redo_cmd(State *state);
+extern const char *tips[];
 
-// Window Menu
-int window_close_cmd(State *state);
-int window_close_all_cmd(State *state);
-int window_cascade_cmd(State *state);
-int window_tile_cmd(State *state);
-int window_next_cmd(State *state);
-int window_previous_cmd(State *state);
+extern const char *file_menu_data[];
+extern const char *edit_menu_data[];
+extern const char *view_menu_data[];
+extern const char *window_menu_data[];
+extern const char *help_menu_data[];
+extern const char *recent_menu_data[];
+extern const char *zoom_menu_data[];
+extern const char *pan_menu_data[];
+extern const char *draw_menu_data[];
+extern const char *tools_menu_data[];
+extern const char *modify_menu_data[];
+extern const char *dimension_menu_data[];
 
-// Help Menu
-int help_cmd(State *state);
-int changelog_cmd(State *state);
-int tip_of_the_day_cmd(State *state);
-int about_cmd(State *state);
-int whats_this_cmd(State *state);
+extern const char *file_toolbar_data[];
+extern const char *edit_toolbar_data[];
+extern const char *view_toolbar_data[];
+extern const char *zoom_toolbar_data[];
+extern const char *pan_toolbar_data[];
+extern const char *icon_toolbar_data[];
+extern const char *help_toolbar_data[];
+extern const char *layer_toolbar_data[];
+extern const char *text_toolbar_data[];
+extern const char *properties_toolbar_data[];
+extern const char *prompt_toolbar_data[];
+extern const char *draw_toolbar_data[];
+extern const char *inquiry_toolbar_data[];
+extern const char *modify_toolbar_data[];
+extern const char *dimension_toolbar_data[];
 
-// Icons
-int icon16_cmd(State *state);
-int icon24_cmd(State *state);
-int icon32_cmd(State *state);
-int icon48_cmd(State *state);
-int icon64_cmd(State *state);
-int icon128_cmd(State *state);
-
-int settingsdialog_cmd(State *state);
-
-// Layer ToolBar
-int makelayercurrent_cmd(State *state);
-int layers_cmd(State *state);
-int layerselector_cmd(State *state);
-int layerprevious_cmd(State *state);
-int colorselector_cmd(State *state);
-int linetypeselector_cmd(State *state);
-int lineweightselector_cmd(State *state);
-int hidealllayers_cmd(State *state);
-int showalllayers_cmd(State *state);
-int freezealllayers_cmd(State *state);
-int thawalllayers_cmd(State *state);
-int lockalllayers_cmd(State *state);
-int unlockalllayers_cmd(State *state);
-
-//Text ToolBar
-int text_bold_cmd(State *state);
-int text_italic_cmd(State *state);
-int text_underline_cmd(State *state);
-int text_strikeout_cmd(State *state);
-int text_overline_cmd(State *state);
-
-// Zoom ToolBar
-int zoom_real_time_cmd(State *state);
-int zoom_previous_cmd(State *state);
-int zoom_window_cmd(State *state);
-int zoom_dynamic_cmd(State *state);
-int zoom_scale_cmd(State *state);
-int zoom_center_cmd(State *state);
-int zoom_in_cmd(State *state);
-int zoom_out_cmd(State *state);
-int zoom_selected_cmd(State *state);
-int zoom_all_cmd(State *state);
-int zoom_extents_cmd(State *state);
-
-// Pan SubMenu
-int pan_real_time_cmd(State *state);
-int pan_point_cmd(State *state);
-int pan_left_cmd(State *state);
-int pan_right_cmd(State *state);
-int pan_up_cmd(State *state);
-int pan_down_cmd(State *state);
-
-int day_cmd(State *state);
-int night_cmd(State *state);
-
-extern CommandData command_table[];
+/* Program state: contains all global variables. */
 extern State state;
 
 #ifdef __cplusplus

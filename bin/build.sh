@@ -1,28 +1,49 @@
-#!/bin/sh
+#!/bin/bash
+
+VERSION="embroidermodder2.0.0-alpha"
+
+set -e
 
 if [ "$1" = "Ubuntu" ]; then
 
-    sudo apt-get update || exit 11
+    sudo apt-get update
     sudo apt-get install git build-essential cmake qt6-base-dev qml-qt6 libqt6widgets6 \
-        libqt6printsupport6 libqt6core6 libgl-dev libgl1-mesa-dev libglx-dev || exit 12
+        libqt6printsupport6 libqt6core6 libgl-dev libgl1-mesa-dev libglx-dev \
+        libsdl3-dev libsdl3-image-dev libsdl3-ttf-dev
 
 elif [ "$1" = "MacOS" ]; then
 
-    brew install qt6 qwt || exit 13
+    brew install qt6 sdl3 sdl3_image sdl3_ttf
 
 elif [ "$1" = "Windows" ]; then
 
-    python -m pip install -U pip --upgrade pip || exit 14
-    pip install aqtinstall || exit 15
-    python -m aqt install-qt windows desktop 6.5.0 win64_mingw || exit 16
+    QT_VERSION="6.5.0"
 
-    echo "set (CMAKE_PREFIX_PATH \"6.5.0/mingw_64\")" >> config.cmake
+    python -m pip install -U pip --upgrade pip
+    pip install aqtinstall
+    python -m aqt install-qt windows desktop "${QT_VERSION}" win64_mingw
+
+    QT_DIR="`pwd`/${QT_VERSION}/mingw_64"
+    export PATH="${QT_DIR}/bin:${PATH}"
+    export CMAKE_PREFIX_PATH="${QT_PATH}"
 
 fi
 
-mkdir build || exit 4
+mkdir build
 cd build
-cmake .. || exit 5
-cmake --build . || exit 6
-cpack || exit 7
+cmake ..
+cmake --build .
+
+mkdir "${VERSION}"
+
+if [ "$1" = "Ubuntu" ]; then
+mv embroidermodder2 LICENSE.md help icons images samples \
+    translations "${VERSION}"
+tar -czf "${VERSION}-linux.tar.gz" "${VERSION}"
+elif [ "$1" = "MacOS" ]; then
+cpack
+elif [ "$1" = "Windows" ]; then
+cpack
+fi
+
 cd ..
