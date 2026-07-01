@@ -87,11 +87,12 @@ int state_load(void)
         printf("ERROR: failed to load XML.\n");
         return 0;
     }
-    print_tree(config, 0);
+
     if (!strarray_from_tree(config, "config.tips", state.tips)) {
         printf("ERROR: failed to parse strarray from tree.\n");
         return 0;
     }
+
     if (!load_menu(config, "config.filemenu", state.file_menu)) {
         return 0;
     }
@@ -122,7 +123,7 @@ int state_load(void)
     if (!load_menu(config, "config.modifymenu", state.modify_menu)) {
         return 0;
     }
-    
+
     if (!load_menu(config, "config.filetoolbar", state.file_toolbar)) {
         return 0;
     }
@@ -157,7 +158,6 @@ int state_load(void)
         return 0;
     }
 
-    print_strarray(state.tips);
     return 1;
 }
 

@@ -189,7 +189,6 @@ parse_xml(Node *result, uint8_t *start, uint8_t *end)
             int contains_tags = 0;
             uint8_t *data_end = end;
             for (; ptr<end; ptr++) {
-                printf("%c", *ptr);
                 if (*ptr == '<') {
                     if (*(ptr+1) == '/') {
                         if (!strncmp(current_tag, ptr+2, strlen(current_tag))) {

@@ -549,19 +549,16 @@ void MainWindow::openFile(bool recent, const QString& recentFile)
     openFilesPath = state.settings.opensave_recent_directory->data;
 
     //Check to see if this from the recent files list
-    if (recent)
-    {
+    if (recent) {
         files.append(recentFile);
         openFilesSelected(files);
     }
-    else if (!preview)
-    {
+    else if (!preview) {
         //TODO: set getOpenFileNames' selectedFilter parameter from state.settings.opensave_open_format
         files = QFileDialog::getOpenFileNames(this, tr("Open"), openFilesPath, formatFilterOpen);
         openFilesSelected(files);
     }
-    else if (preview)
-    {
+    else if (preview) {
         PreviewDialog* openDialog = new PreviewDialog(this, tr("Open w/Preview"), openFilesPath, formatFilterOpen);
         //TODO: set openDialog->selectNameFilter(const QString& filter) from state.settings.opensave_open_format
         connect(openDialog, SIGNAL(filesSelected(const QStringList&)), this, SLOT(openFilesSelected(const QStringList&)));
@@ -651,15 +648,24 @@ void MainWindow::savefile()
 void MainWindow::saveasfile()
 {
     qDebug("MainWindow::saveasfile()");
-    // need to find the activeSubWindow before it loses focus to the FileDialog
+    /* need to find the activeSubWindow before it loses focus to the FileDialog */
     MdiWindow* mdiWin = qobject_cast<MdiWindow*>(mdiArea->activeSubWindow());
-    if (!mdiWin)
+    if (!mdiWin) {
         return;
+    }
 
     QString file;
+    QString selected_filter;
     openFilesPath = state.settings.opensave_recent_directory->data;
-    file = QFileDialog::getSaveFileName(this, tr("Save As"), openFilesPath, formatFilterSave);
+    file = QFileDialog::getSaveFileName(this, tr("Save As"), mdiWin->curFile, formatFilterSave, &selected_filter);
 
+    if (file.indexOf(".", 0) == -1) {
+        qDebug("No extension provided, using the selected filter.");
+        QString ext = selected_filter.split(" ").at(0);
+        file += "." + ext;
+    }
+
+    qDebug("Saving as \"%s\"...", qPrintable(file));
     mdiWin->saveFile(file);
 }
 
@@ -867,10 +873,12 @@ void MainWindow::loadFormats()
 
     EmbFormatList* curFormat = 0;
     EmbFormatList* formatList = embFormatList_create();
-    if (!formatList) { QMessageBox::critical(this, tr("Format Loading Error"), tr("Unable to load formats from libembroidery.")); return; }
+    if (!formatList) {
+        QMessageBox::critical(this, tr("Format Loading Error"), tr("Unable to load formats from libembroidery."));
+        return;
+    }
     curFormat = formatList;
-    while(curFormat)
-    {
+    while (curFormat) {
         extension = embFormat_extension(curFormat);
         description = embFormat_description(curFormat);
         readerState = embFormat_readerState(curFormat);
@@ -879,19 +887,20 @@ void MainWindow::loadFormats()
         QString upperExt = QString(extension).toUpper();
         supportedStr = "*" + upperExt + " ";
         individualStr = upperExt.replace(".", "") + " - " + description + " (*" + extension + ");;";
-        if (readerState == stable || readerState == unstable)
-        {
-            //Exclude color file formats from open dialogs
-            if (upperExt != "COL" && upperExt != "EDR" && upperExt != "INF" && upperExt != "RGB")
-            {
+        if (readerState == stable || readerState == unstable) {
+            /* Exclude color file formats from open dialogs. */
+            if (upperExt != "COL" && upperExt != "EDR" && upperExt != "INF" && upperExt != "RGB") {
                 supportedReaders.append(supportedStr);
+                supportedReaders.append(supportedStr.toLower());
                 individualReaders.append(individualStr);
+                individualReaders.append(individualStr.toLower());
             }
         }
-        if (writerState == stable || writerState == unstable)
-        {
+        if (writerState == stable || writerState == unstable) {
             supportedWriters.append(supportedStr);
+            supportedWriters.append(supportedStr.toLower());
             individualWriters.append(individualStr);
+            individualWriters.append(individualStr.toLower());
         }
 
         curFormat = curFormat->next;
@@ -905,17 +914,20 @@ void MainWindow::loadFormats()
     formatFilterOpen = supportedReaders + individualReaders;
     formatFilterSave = supportedWriters + individualWriters;
 
-    //TODO: Fixup custom filter
+    /* TODO: Fixup custom filter */
     /*
     QString custom = state.settings.custom_filter;
-    if (custom.contains("supported", Qt::CaseInsensitive))
+    if (custom.contains("supported", Qt::CaseInsensitive)) {
         custom = ""; //This will hide it
-    else if (!custom.contains("*", Qt::CaseInsensitive))
+    }
+    else if (!custom.contains("*", Qt::CaseInsensitive)) {
         custom = ""; //This will hide it
-    else
+    }
+    else {
         custom = "Custom Filter(" + custom + ");;";
+    }
 
-    return tr(qPrintable(custom + supported + all));
+    return qPrintable(custom + supported + all);
     */
 }
 

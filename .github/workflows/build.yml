@@ -17,10 +17,12 @@ jobs:
         with:
           ref: 'current'
       - name: Build
-        run: bash bin/build.sh "Ubuntu"
-      - uses: actions/upload-artifact@v7
+        run: bash build.sh --ci Ubuntu
+      - name: archive production artifacts
+        uses: actions/upload-artifact@v7
         with:
-          path: embroidermodder/build/embroidermodder*.zip.gz
+          name: Ubuntu
+          path: build
 
   build-macos:
     runs-on: macos-latest
@@ -29,10 +31,12 @@ jobs:
         with:
           ref: 'current'
       - name: Build
-        run: bash bin/build.sh "MacOS"
-      - uses: actions/upload-artifact@v7
+        run: bash build.sh --ci MacOS
+      - name: archive production artifacts
+        uses: actions/upload-artifact@v7
         with:
-          path: embroidermodder/build/embroidermodder*.app
+          name: MacOS
+          path: build
 
   build-windows:
     runs-on: windows-latest
@@ -41,7 +45,10 @@ jobs:
         with:
           ref: 'current'
       - name: Build
-        run: bash bin/build.sh "Windows"
-      - uses: actions/upload-artifact@v7
+        run: bash build.sh --ci Windows
+      - name: archive production artifacts
+        uses: actions/upload-artifact@v7
+        if: always()
         with:
-          path: embroidermodder/build/embroidermodder*.exe
+          name: Windows
+          path: build

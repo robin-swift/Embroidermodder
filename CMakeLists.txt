@@ -52,7 +52,7 @@ add_subdirectory(extern/tomlc99)
 #
 # https://cmake.org/cmake/help/latest/command/file.html?highlight=glob#glob
 #
-qt_add_executable(embroidermodder2
+add_executable(embroidermodder2
     ${SRC}/core/command-table.c
     ${SRC}/core/load.c
     ${SRC}/core/tree.c
