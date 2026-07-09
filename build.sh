@@ -87,8 +87,10 @@ function package() {
 
 function package_ci() {
 
+    cd staging
     RUN_ID=`gh run list --workflow build.yml --limit 1 --json databaseId | jq -r .[0].databaseId`
     gh run download $RUN_ID -n Windows -n Ubuntu
+    cd ..
 
 }
 
@@ -106,17 +108,9 @@ function build_ci() {
 
     get_dependencies $1
 
-    if [ "$1" == "Windows" ]; then
-        QT_DIR="`pwd`/${QT_VERSION}/mingw_64"
-        export PATH="${QT_DIR}/bin:${PATH}"
-        export CMAKE_PREFIX_PATH="${QT_PATH}"
-    fi
+    build
 
-    mkdir -p ${BUILD_DIR}
-    cd ${BUILD_DIR}
-    cmake -DCMAKE_BUILD_TYPE=Release -G"Unix Makefiles" ..
-    cmake --build .
-    cd ..
+    package $1
 
 }
 
@@ -269,6 +263,10 @@ do
       ;;
     -p | --package )
       package $2
+      shift 2
+      ;;
+    --package-ci )
+      package_ci
       shift 2
       ;;
     *)
