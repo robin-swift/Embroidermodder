@@ -267,7 +267,7 @@ do
       ;;
     --package-ci )
       package_ci
-      shift 2
+      shift
       ;;
     *)
       help_msg
